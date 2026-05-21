@@ -29,6 +29,7 @@
 
   function addThemeToggle() {
     if (document.getElementById("mianclaw-theme-toggle")) return;
+    if (!document.body) return;
     var button = document.createElement("button");
     button.id = "mianclaw-theme-toggle";
     button.type = "button";
@@ -45,6 +46,7 @@
   }
 
   function replaceTextNodes() {
+    if (!document.body) return;
     document.title = document.title.replace(BRAND_FROM, BRAND_TO);
     var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
       acceptNode: function (node) {
@@ -104,6 +106,7 @@
   }
 
   function run() {
+    if (!document.body) return;
     addStyle();
     addThemeToggle();
     replaceTextNodes();
@@ -112,10 +115,20 @@
     document.documentElement.setAttribute("data-mian-theme", localStorage.getItem("mianclaw-theme") || "deep");
   }
 
+  var runTimer = null;
+  function scheduleRun() {
+    if (runTimer) return;
+    runTimer = setTimeout(function () {
+      runTimer = null;
+      run();
+    }, 250);
+  }
+
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", run);
   } else {
     run();
   }
-  new MutationObserver(run).observe(document.documentElement, { childList: true, subtree: true });
+  var observerTarget = document.documentElement || document;
+  new MutationObserver(scheduleRun).observe(observerTarget, { childList: true, subtree: true });
 })();

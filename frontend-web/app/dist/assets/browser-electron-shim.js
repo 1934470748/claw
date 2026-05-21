@@ -119,6 +119,7 @@
 
     function addToggle() {
       if (document.getElementById("clawhouse-theme-toggle")) return;
+      if (!document.body) return;
       var button = document.createElement("button");
       button.id = "clawhouse-theme-toggle";
       button.type = "button";
@@ -135,6 +136,7 @@
     }
 
     function applyLogo() {
+      if (!document.body) return;
       addToggle();
       var textNodes = Array.prototype.slice.call(document.querySelectorAll("span,div,h1,h2,strong,p"));
       textNodes.forEach(function (el) {
@@ -160,12 +162,20 @@
       }
     }
 
+    var applyTimer = null;
+    function scheduleApplyLogo() {
+      if (applyTimer) return;
+      applyTimer = setTimeout(function () {
+        applyTimer = null;
+        applyLogo();
+      }, 300);
+    }
     if (document.readyState === "loading") {
       document.addEventListener("DOMContentLoaded", applyLogo);
     } else {
       applyLogo();
     }
-    new MutationObserver(applyLogo).observe(document.documentElement, { childList: true, subtree: true });
+    new MutationObserver(scheduleApplyLogo).observe(document.documentElement || document, { childList: true, subtree: true });
   }
 
   window.electron = {
