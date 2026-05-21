@@ -33,6 +33,7 @@ app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use("/clawhouse", express.static(path.join(__dirname, "../public/clawhouse")));
+app.use("/saas-admin", express.static(path.join(__dirname, "../public/saas-admin")));
 
 function ok(res, body = {}) {
   res.json({ success: true, ...body });
@@ -662,11 +663,31 @@ function getSkillsStatus() {
   };
 }
 
+function normalizeCronJob(value = {}) {
+  const id = value.id || makeId("cron");
+  const enabled = value.enabled !== false && value.status !== "paused";
+  return {
+    ...value,
+    id,
+    enabled,
+    status: value.status || (enabled ? "running" : "paused"),
+    schedule: value.schedule || value.cron || { kind: "cron", expr: value.cronExpr || value.expression || "0 9 * * *" },
+    agentId: value.agentId || "main"
+  };
+}
+
 function readRuntimeLogs(limit = 200) {
+  const backendRoot = path.resolve(__dirname, "..");
+  const appRoot = path.join(path.dirname(backendRoot), path.basename(backendRoot).slice(0, -2));
   const logDirs = [
     path.resolve(process.cwd(), "logs"),
     path.resolve(process.cwd(), "data/logs"),
-    path.resolve(process.cwd(), "../新版小龙虾/data/logs")
+    path.join(appRoot, "logs"),
+    path.join(appRoot, "data/logs"),
+    path.join(appRoot, "data/openclaw/logs"),
+    path.join(appRoot, "resources/openclaw/logs"),
+    path.join(process.env.APPDATA || "", "ClawHouse/logs"),
+    path.join(process.env.APPDATA || "", "MianClaw/logs")
   ];
   const files = [];
   for (const dir of logDirs) {
@@ -676,25 +697,47 @@ function readRuntimeLogs(limit = 200) {
       }
     } catch {}
   }
+  for (const filePath of [
+    path.join(appRoot, "debug.log"),
+    path.join(appRoot, "openclaw.log"),
+    path.join(process.cwd(), "openclaw.log")
+  ]) {
+    if (fs.existsSync(filePath)) files.push(filePath);
+  }
+  const scoreLogFile = (filePath) => {
+    const normalized = filePath.toLowerCase();
+    if (normalized.startsWith(path.join(appRoot, "data", "logs").toLowerCase())) return 3000;
+    if (normalized.includes("\\openclaw\\")) return 2000;
+    if (normalized.includes("\\mianclaw\\")) return 1500;
+    if (normalized.includes("\\clawhouse\\")) return 1400;
+    if (normalized.startsWith(path.join(backendRoot, "logs").toLowerCase())) return 0;
+    return 100;
+  };
   files.sort((a, b) => {
-    try { return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs; } catch { return 0; }
+    try {
+      const byScore = scoreLogFile(b) - scoreLogFile(a);
+      if (byScore !== 0) return byScore;
+      return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs;
+    } catch { return 0; }
   });
-  const file = files[0] || null;
-  if (!file) return { file: null, lines: [], entries: [], total: 0 };
-  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).slice(-limit);
+  const filePath = files[0] || null;
+  if (!filePath) return { file: null, content: "", lines: [], entries: [], total: 0, updatedAt: now() };
+  const logLines = fs.readFileSync(filePath, "utf8").split(/\r?\n/).filter(Boolean).slice(-limit);
+  const content = logLines.join("\n");
   return {
-    file,
-    lines,
-    entries: lines.map((message, index) => ({
-      id: `${path.basename(file)}:${index}`,
+    file: filePath,
+    content,
+    lines: logLines,
+    entries: logLines.map((message, index) => ({
+      id: `${path.basename(filePath)}:${index}`,
       level: /error|fail|unauthorized|auth/i.test(message) ? "ERROR" : /warn/i.test(message) ? "WARN" : "INFO",
       message,
       timestamp: null
     })),
-    total: lines.length
+    total: logLines.length,
+    updatedAt: now()
   };
 }
-
 function compareVersions(a, b) {
   const pa = String(a || "0").split(".").map((part) => Number(part.replace(/\D/g, "")) || 0);
   const pb = String(b || "0").split(".").map((part) => Number(part.replace(/\D/g, "")) || 0);
@@ -1400,18 +1443,46 @@ app.get("/api/cron/status", (req, res) => ok(res, listCronJobs()));
 app.get("/api/cron/tasks", (req, res) => ok(res, listCronJobs()));
 app.get("/api/cron/jobs", (req, res) => res.json(listTable("cron_jobs")));
 app.post("/api/cron/jobs", (req, res) => {
-  const value = req.body || {};
-  const id = value.id || makeId("cron");
-  const saved = saveTableItem("cron_jobs", "id", id, { ...value, id, status: value.status || "paused" });
-  ok(res, { job: saved });
+  const value = normalizeCronJob(req.body || {});
+  const saved = saveTableItem("cron_jobs", "id", value.id, value);
+  res.json(saved);
 });
 app.post("/api/cron-jobs", (req, res) => {
-  const value = req.body || {};
-  const id = value.id || makeId("cron");
-  const saved = saveTableItem("cron_jobs", "id", id, { ...value, id, status: value.status || "paused" });
+  const value = normalizeCronJob(req.body || {});
+  const saved = saveTableItem("cron_jobs", "id", value.id, value);
   ok(res, { job: saved });
 });
+app.put("/api/cron/jobs/:id", (req, res) => {
+  const current = getTableItem("cron_jobs", "id", req.params.id) || { id: req.params.id };
+  const saved = saveTableItem("cron_jobs", "id", req.params.id, normalizeCronJob({ ...current, ...(req.body || {}), id: req.params.id }));
+  res.json(saved);
+});
+app.patch("/api/cron/jobs/:id", (req, res) => {
+  const current = getTableItem("cron_jobs", "id", req.params.id) || { id: req.params.id };
+  const saved = saveTableItem("cron_jobs", "id", req.params.id, normalizeCronJob({ ...current, ...(req.body || {}), id: req.params.id }));
+  res.json(saved);
+});
+app.delete("/api/cron/jobs/:id", (req, res) => ok(res, { deleted: deleteTableItem("cron_jobs", "id", req.params.id) }));
 app.delete("/api/cron-jobs/:id", (req, res) => ok(res, { deleted: deleteTableItem("cron_jobs", "id", req.params.id) }));
+app.post("/api/cron/toggle", (req, res) => {
+  const id = req.body?.id;
+  if (!id) return fail(res, 400, "Missing cron job id");
+  const current = getTableItem("cron_jobs", "id", id) || { id };
+  const enabled = req.body?.enabled !== false;
+  const saved = saveTableItem("cron_jobs", "id", id, normalizeCronJob({ ...current, enabled, status: enabled ? "running" : "paused" }));
+  ok(res, { job: saved });
+});
+app.post("/api/cron/trigger", (req, res) => {
+  const id = req.body?.id;
+  if (!id) return fail(res, 400, "Missing cron job id");
+  const current = getTableItem("cron_jobs", "id", id) || { id };
+  const saved = saveTableItem("cron_jobs", "id", id, {
+    ...current,
+    lastRunAt: now(),
+    lastResult: { ok: true, mode: "local-preview" }
+  });
+  ok(res, { triggered: true, job: saved });
+});
 
 // ─── Channels ──────────────────────────────────────────────────────
 
@@ -1448,9 +1519,9 @@ app.get("/api/clawhub/installed", (req, res) => ok(res, { skills: [], items: [] 
 app.post("/api/clawhub/install", (req, res) => ok(res, { installed: false, message: "Skill installation is not available in browser mode" }));
 app.post("/api/clawhub/uninstall", (req, res) => ok(res, { removed: false }));
 
-app.get("/api/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
-app.get("/api/runtime/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
-app.get("/api/openclaw/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
+app.get("/api/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.tailLines || req.query.limit || 200))));
+app.get("/api/runtime/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.tailLines || req.query.limit || 200))));
+app.get("/api/openclaw/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.tailLines || req.query.limit || 200))));
 
 // ─── Gateway RPC ───────────────────────────────────────────────────
 

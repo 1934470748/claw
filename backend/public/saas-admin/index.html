@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MianClaw SaaS Admin</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <aside>
+      <div class="brand">
+        <img src="../clawhouse/logo.png" alt="" />
+        <div>
+          <strong>MianClaw</strong>
+          <span>SaaS Admin</span>
+        </div>
+      </div>
+      <nav>
+        <a class="active" href="#overview">概览</a>
+        <a href="#users">用户</a>
+        <a href="#keys">Key 管理</a>
+        <a href="#usage">用量分析</a>
+        <a href="#plans">套餐</a>
+        <a href="#updates">更新发布</a>
+      </nav>
+    </aside>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">MianClaw Console</p>
+          <h1>运营后台骨架</h1>
+        </div>
+        <button id="refresh">刷新本地数据</button>
+      </header>
+      <section class="stats">
+        <article><span>注册用户</span><strong id="users">0</strong></article>
+        <article><span>活跃 Key</span><strong id="keys">0</strong></article>
+        <article><span>今日 Tokens</span><strong id="tokens">0</strong></article>
+        <article><span>服务状态</span><strong id="status">检查中</strong></article>
+      </section>
+      <section class="grid">
+        <article>
+          <h2>账号与 Key</h2>
+          <p>后续接入 NewAPI 管理员接口后，这里负责创建用户、签发专用 Key、重置额度与查看余额。</p>
+          <div class="rows" id="keyRows"></div>
+        </article>
+        <article>
+          <h2>用量与成本</h2>
+          <p>展示请求次数、模型分布、Token 消耗和错误趋势；官方厂商 Key 会走本地统计。</p>
+          <div class="chart"><span></span><span></span><span></span><span></span></div>
+        </article>
+        <article>
+          <h2>套餐与支付</h2>
+          <p>推荐用 nextjs/saas-starter 承接正式 auth、RBAC、Stripe 和团队管理。</p>
+          <button>查看接入计划</button>
+        </article>
+        <article>
+          <h2>客户端更新</h2>
+          <p>维护版本号、下载地址和发布说明，给桌面端 `/api/update/status` 使用。</p>
+          <button>准备发布配置</button>
+        </article>
+      </section>
+    </main>
+    <script src="./main.js"></script>
+  </body>
+</html>
