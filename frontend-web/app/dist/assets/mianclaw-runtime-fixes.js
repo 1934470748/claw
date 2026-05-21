@@ -83,7 +83,11 @@
       if (/注册账号|前往注册|打开注册页/.test(text)) {
         event.preventDefault();
         event.stopPropagation();
-        window.location.href = KEY_PAGE;
+        if (window.electron && typeof window.electron.openExternal === "function") {
+          openUrl(KEY_PAGE);
+        } else {
+          window.location.href = KEY_PAGE;
+        }
         return;
       }
       if (/安装技能/.test(text)) {
