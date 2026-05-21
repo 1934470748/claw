@@ -1,22 +1,48 @@
-# 新版小龙虾后端
+# ClawHouse Compatible Backend
 
-这是一个先用于跑通解包前端的兼容后端。
+This backend is the browser-compatible service layer for the unpacked ClawHouse/OpenClaw frontend.
 
-## 启动
+## Start
 
 ```bash
 npm install
 npm start
 ```
 
-默认地址：
+Default URL:
 
 ```text
 http://127.0.0.1:3001
 ```
 
-## 当前范围
+Frontend static preview currently runs from:
 
-- 已实现主要 `/api/settings`、`/api/gateway`、`/api/providers`、`/api/provider-accounts`、`/api/agents`、`/api/channels`、`/api/cron`、`/api/clawhub`、`/api/logs`、`/api/usage` 等兼容接口。
-- 数据使用 Node 内置 `node:sqlite` 存在 `data/clawhouse.sqlite`。
-- AI 网关、支付、真实渠道登录、文件处理目前是兼容返回，方便先把前端页面跑通。
+```text
+http://localhost:4173/app/dist/
+```
+
+## Current Scope
+
+- Provider key saving for NewAPI and common OpenAI-compatible official vendors.
+- Automatic `openclaw.json` sync for the active ClawHouse provider.
+- Browser shim for Electron IPC/HostAPI calls.
+- Compatible routes for settings, gateway, providers, provider accounts, channels, skills, cron tasks, logs, usage, and updates.
+- Local SQLite data at `data/clawhouse.sqlite`.
+
+## Update Manifest
+
+For future server deployment, set:
+
+```env
+APP_VERSION=0.3.9
+UPDATE_MANIFEST_URL=https://your-domain.com/clawhouse/update.json
+```
+
+Then the frontend can call:
+
+```text
+GET  /api/update/status
+POST /api/update/check
+```
+
+The manifest format is documented in `docs/saas-admin-plan.md`.

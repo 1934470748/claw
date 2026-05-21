@@ -41,7 +41,9 @@ export const env = {
   defaultModel: process.env.NEWAPI_DEFAULT_MODEL || "gpt-4.1-nano-2025-04-14",
   newapiAdminAccessToken: process.env.NEWAPI_ADMIN_ACCESS_TOKEN || "",
   newapiAdminUserId: process.env.NEWAPI_ADMIN_USER_ID || "",
-  issueKeyDefaultQuota: Number(process.env.NEWAPI_ISSUE_KEY_DEFAULT_QUOTA || 0)
+  issueKeyDefaultQuota: Number(process.env.NEWAPI_ISSUE_KEY_DEFAULT_QUOTA || 0),
+  appVersion: process.env.APP_VERSION || "0.3.9",
+  updateManifestUrl: process.env.UPDATE_MANIFEST_URL || ""
 };
 
 export function normalizeBaseUrl(baseUrl) {

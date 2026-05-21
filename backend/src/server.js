@@ -555,14 +555,117 @@ function listChannelViews() {
 
 // ─── Gateway RPC ──────────────────────────────────────────────────
 
+function getChannelStatus() {
+  const supported = [
+    { type: "wechat", name: "WeChat", label: "WeChat", enabled: true, installed: false, status: "available", mode: "plugin" },
+    { type: "lark", name: "Feishu / Lark", label: "Feishu / Lark", enabled: true, installed: false, status: "available", mode: "plugin" },
+    { type: "dingtalk", name: "DingTalk", label: "DingTalk", enabled: true, installed: false, status: "available", mode: "stream" },
+    { type: "qq", name: "QQ Bot", label: "QQ Bot", enabled: true, installed: false, status: "available", mode: "builtin" },
+    { type: "wecom", name: "WeCom", label: "WeCom", enabled: true, installed: false, status: "available", mode: "plugin" }
+  ];
+  const configured = listChannelViews();
+  return { supported, configured, channels: configured, accounts: [], defaultAccountId: null };
+}
+
+function listCronJobs() {
+  const jobs = listTable("cron_jobs");
+  return {
+    jobs,
+    items: jobs,
+    summary: {
+      total: jobs.length,
+      running: jobs.filter((job) => job.status === "running").length,
+      paused: jobs.filter((job) => job.status === "paused").length,
+      failed: jobs.filter((job) => job.status === "failed").length
+    }
+  };
+}
+
+function getSkillsStatus() {
+  return {
+    skills: [],
+    items: [],
+    catalogs: [
+      { id: "builtin", name: "Built-in", enabled: true },
+      { id: "market", name: "Market", enabled: true }
+    ],
+    updatedAt: now()
+  };
+}
+
+function readRuntimeLogs(limit = 200) {
+  const logDirs = [
+    path.resolve(process.cwd(), "logs"),
+    path.resolve(process.cwd(), "data/logs"),
+    path.resolve(process.cwd(), "../新版小龙虾/data/logs")
+  ];
+  const files = [];
+  for (const dir of logDirs) {
+    try {
+      for (const name of fs.readdirSync(dir)) {
+        if (/\.(log|txt)$/i.test(name)) files.push(path.join(dir, name));
+      }
+    } catch {}
+  }
+  files.sort((a, b) => {
+    try { return fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs; } catch { return 0; }
+  });
+  const file = files[0] || null;
+  if (!file) return { file: null, lines: [], entries: [], total: 0 };
+  const lines = fs.readFileSync(file, "utf8").split(/\r?\n/).filter(Boolean).slice(-limit);
+  return {
+    file,
+    lines,
+    entries: lines.map((message, index) => ({
+      id: `${path.basename(file)}:${index}`,
+      level: /error|fail|unauthorized|auth/i.test(message) ? "ERROR" : /warn/i.test(message) ? "WARN" : "INFO",
+      message,
+      timestamp: null
+    })),
+    total: lines.length
+  };
+}
+
+function compareVersions(a, b) {
+  const pa = String(a || "0").split(".").map((part) => Number(part.replace(/\D/g, "")) || 0);
+  const pb = String(b || "0").split(".").map((part) => Number(part.replace(/\D/g, "")) || 0);
+  const length = Math.max(pa.length, pb.length);
+  for (let i = 0; i < length; i += 1) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
+}
+
+async function getUpdateStatus() {
+  const currentVersion = env.appVersion;
+  if (!env.updateManifestUrl) {
+    return { status: "not-configured", available: false, currentVersion, updateInfo: null };
+  }
+  const response = await fetch(env.updateManifestUrl, { signal: AbortSignal.timeout(8000) });
+  if (!response.ok) throw new Error(`Update manifest ${response.status}`);
+  const manifest = await response.json();
+  const latestVersion = manifest.version || manifest.latestVersion || currentVersion;
+  const available = compareVersions(latestVersion, currentVersion) > 0;
+  return {
+    status: available ? "available" : "up-to-date",
+    available,
+    currentVersion,
+    latestVersion,
+    updateInfo: manifest
+  };
+}
+
 async function gatewayRpc(method, params = {}) {
   switch (method) {
     case "skills.status":
-      return { skills: [] };
+    case "skills.list":
+      return getSkillsStatus();
     case "skills.update":
       return { updated: true };
     case "channels.status":
-      return { channels: listChannelViews() };
+    case "channels.list":
+      return getChannelStatus();
     case "channels.add":
       return { channel: params || {} };
     case "channels.connect":
@@ -572,6 +675,14 @@ async function gatewayRpc(method, params = {}) {
       return { success: true };
     case "channels.requestQr":
       return { status: "connected", qr: null };
+    case "cron.status":
+    case "cron.list":
+    case "cron.jobs":
+    case "tasks.list":
+      return listCronJobs();
+    case "logs.list":
+    case "runtime.logs":
+      return readRuntimeLogs(Number(params?.limit || 200));
     case "sessions.list":
       return {
         sessions: Array.from(chatSessions.values()).map((session) => ({
@@ -1212,15 +1323,65 @@ app.get("/api/agents", (req, res) => {
 // ─── Cron ──────────────────────────────────────────────────────────
 
 app.get("/api/cron-jobs", (req, res) => {
-  const list = listTable("cron_jobs");
-  ok(res, { jobs: list });
+  ok(res, listCronJobs());
 });
+
+app.get("/api/cron", (req, res) => ok(res, listCronJobs()));
+app.get("/api/cron/status", (req, res) => ok(res, listCronJobs()));
+app.get("/api/cron/tasks", (req, res) => ok(res, listCronJobs()));
+app.get("/api/cron/jobs", (req, res) => res.json(listTable("cron_jobs")));
+app.post("/api/cron/jobs", (req, res) => {
+  const value = req.body || {};
+  const id = value.id || makeId("cron");
+  const saved = saveTableItem("cron_jobs", "id", id, { ...value, id, status: value.status || "paused" });
+  ok(res, { job: saved });
+});
+app.post("/api/cron-jobs", (req, res) => {
+  const value = req.body || {};
+  const id = value.id || makeId("cron");
+  const saved = saveTableItem("cron_jobs", "id", id, { ...value, id, status: value.status || "paused" });
+  ok(res, { job: saved });
+});
+app.delete("/api/cron-jobs/:id", (req, res) => ok(res, { deleted: deleteTableItem("cron_jobs", "id", req.params.id) }));
 
 // ─── Channels ──────────────────────────────────────────────────────
 
 app.get("/api/channels", (req, res) => {
-  ok(res, { channels: listChannelViews() });
+  ok(res, getChannelStatus());
 });
+
+app.get("/api/channels/status", (req, res) => ok(res, getChannelStatus()));
+app.get("/api/channels/accounts", (req, res) => ok(res, { accounts: [], items: [], defaultAccountId: null }));
+app.get("/api/channels/config", (req, res) => ok(res, getChannelStatus()));
+app.get("/api/channels/config/:type", (req, res) => {
+  const channel = getTableItem("channels", "channel_type", req.params.type);
+  ok(res, { channel, config: channel });
+});
+app.post("/api/channels/config/:type", (req, res) => {
+  const type = req.params.type;
+  const value = { ...(req.body || {}), channel_type: type, type, enabled: req.body?.enabled !== false };
+  const saved = saveTableItem("channels", "channel_type", type, value, {
+    columns: "enabled",
+    placeholders: "?",
+    values: [value.enabled ? 1 : 0],
+    update: "enabled = excluded.enabled"
+  });
+  ok(res, { channel: saved, config: saved });
+});
+app.delete("/api/channels/config/:type", (req, res) => ok(res, { deleted: deleteTableItem("channels", "channel_type", req.params.type) }));
+
+app.get("/api/skills", (req, res) => ok(res, getSkillsStatus()));
+app.get("/api/skills/status", (req, res) => ok(res, getSkillsStatus()));
+app.get("/api/skills/configs", (req, res) => res.json([]));
+app.post("/api/skills/update", (req, res) => ok(res, { updated: true, ...getSkillsStatus() }));
+app.get("/api/clawhub/list", (req, res) => ok(res, { skills: [], items: [], marketplace: [] }));
+app.get("/api/clawhub/installed", (req, res) => ok(res, { skills: [], items: [] }));
+app.post("/api/clawhub/install", (req, res) => ok(res, { installed: false, message: "Skill installation is not available in browser mode" }));
+app.post("/api/clawhub/uninstall", (req, res) => ok(res, { removed: false }));
+
+app.get("/api/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
+app.get("/api/runtime/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
+app.get("/api/openclaw/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.limit || 200))));
 
 // ─── Gateway RPC ───────────────────────────────────────────────────
 
@@ -1276,8 +1437,8 @@ app.get("/api/events", (req, res) => sseRegister(res));
 
 // ─── Update ────────────────────────────────────────────────────────
 
-app.get("/api/update/status", (req, res) => ok(res, { status: "not-available", available: false }));
-app.post("/api/update/check", (req, res) => ok(res, { status: "not-available", available: false }));
+app.get("/api/update/status", asyncRoute(async (req, res) => ok(res, await getUpdateStatus())));
+app.post("/api/update/check", asyncRoute(async (req, res) => ok(res, await getUpdateStatus())));
 
 // ─── Chat Stream (v2 SSE endpoint for send + progressive response) ─
 

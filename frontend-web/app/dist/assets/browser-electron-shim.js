@@ -57,7 +57,11 @@
   }
 
   function updateStatus() {
-    return Promise.resolve({ status: "not-available", available: false, progress: null, updateInfo: null });
+    return request("/api/update/status").then(function (result) {
+      return result.data || { status: "not-configured", available: false, progress: null, updateInfo: null };
+    }).catch(function () {
+      return { status: "not-configured", available: false, progress: null, updateInfo: null };
+    });
   }
 
   function hasConfiguredProvider() {
@@ -79,11 +83,100 @@
     }).then(function () { return { ok: true }; });
   }
 
+  function isRegisterUrl(url) {
+    var value = String(url || "");
+    return value.indexOf("sign-up") >= 0 ||
+      value.indexOf("dashboard/key") >= 0 ||
+      value.indexOf("api.ovov.fun") >= 0 ||
+      value.indexOf("124.220.216.160") >= 0;
+  }
+
+  function injectBranding() {
+    var logoUrl = "./assets/clawhouse-logo.png";
+    var style = document.createElement("style");
+    style.id = "clawhouse-brand-style";
+    style.textContent = [
+      ":root{--ch-bg:#070b18;--ch-panel:#101a31;--ch-panel-2:#172441;--ch-text:#f8fbff;--ch-muted:#91a5c4;--ch-line:#243557;--ch-accent:#ff4f8b;--ch-accent-2:#ff7a1a;--ch-cyan:#31e6ff;}",
+      ':root[data-claw-theme="ocean"]{--ch-bg:#061a24;--ch-panel:#0d2b3b;--ch-panel-2:#123c52;--ch-accent:#17d6c2;--ch-accent-2:#4aa7ff;--ch-cyan:#f9d26a;}',
+      ':root[data-claw-theme="light"]{--ch-bg:#f8fbff;--ch-panel:#ffffff;--ch-panel-2:#edf3ff;--ch-text:#101726;--ch-muted:#53627a;--ch-line:#d8e2f2;--ch-accent:#ff2f7d;--ch-accent-2:#ff7a1a;--ch-cyan:#2378ff;}',
+      "body,#root{background:radial-gradient(circle at 62% -10%,color-mix(in srgb,var(--ch-accent) 20%,transparent),transparent 34%),linear-gradient(180deg,var(--ch-bg),#050814 70%)!important;color:var(--ch-text)!important;}",
+      "button,[role=button]{border-radius:10px!important;}",
+      "button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:background .18s ease,border-color .18s ease,transform .18s ease;}",
+      "button:not(:disabled):hover,[role=button]:not([aria-disabled=true]):hover{transform:translateY(-1px);}",
+      "input,textarea,select{border-color:color-mix(in srgb,var(--ch-accent) 42%,var(--ch-line))!important;box-shadow:none!important;}",
+      "input:focus,textarea:focus{box-shadow:0 0 0 3px color-mix(in srgb,var(--ch-accent) 26%,transparent)!important;}",
+      "[class*=card],[class*=panel],aside,nav{border-color:color-mix(in srgb,var(--ch-line) 72%,var(--ch-accent) 18%)!important;}",
+      ".clawhouse-brand-logo{width:26px;height:26px;border-radius:8px;object-fit:cover;box-shadow:0 0 22px color-mix(in srgb,var(--ch-accent) 45%,transparent);margin-right:8px;vertical-align:middle;}",
+      ".clawhouse-hero-logo{width:82px;height:82px;border-radius:24px;object-fit:cover;box-shadow:0 24px 60px color-mix(in srgb,var(--ch-accent) 36%,transparent);}",
+      "#clawhouse-theme-toggle{position:fixed;right:18px;bottom:18px;z-index:2147483647;width:38px;height:38px;border:1px solid color-mix(in srgb,var(--ch-line) 70%,var(--ch-cyan));border-radius:999px!important;background:linear-gradient(135deg,var(--ch-accent),var(--ch-accent-2));color:white;font-size:0;box-shadow:0 12px 30px rgba(0,0,0,.24);}",
+      "#clawhouse-theme-toggle:before{content:'';display:block;width:16px;height:16px;margin:10px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff 0 22%,transparent 24%),conic-gradient(var(--ch-cyan),var(--ch-accent),var(--ch-accent-2),var(--ch-cyan));}",
+      ':root[data-claw-theme="light"] #clawhouse-theme-toggle{color:#111;background:linear-gradient(135deg,#fff,var(--ch-panel-2));}'
+    ].join("\n");
+    if (!document.getElementById(style.id)) document.head.appendChild(style);
+
+    var savedTheme = localStorage.getItem("clawhouse-theme") || "aurora";
+    document.documentElement.setAttribute("data-claw-theme", savedTheme);
+
+    function addToggle() {
+      if (document.getElementById("clawhouse-theme-toggle")) return;
+      var button = document.createElement("button");
+      button.id = "clawhouse-theme-toggle";
+      button.type = "button";
+      button.title = "切换颜色";
+      button.setAttribute("aria-label", "切换颜色");
+      button.addEventListener("click", function () {
+        var themes = ["aurora", "ocean", "light"];
+        var current = document.documentElement.getAttribute("data-claw-theme") || "aurora";
+        var next = themes[(themes.indexOf(current) + 1) % themes.length];
+        document.documentElement.setAttribute("data-claw-theme", next);
+        localStorage.setItem("clawhouse-theme", next);
+      });
+      document.body.appendChild(button);
+    }
+
+    function applyLogo() {
+      addToggle();
+      var textNodes = Array.prototype.slice.call(document.querySelectorAll("span,div,h1,h2,strong,p"));
+      textNodes.forEach(function (el) {
+        if ((el.textContent || "").trim() !== "ClawHouse") return;
+        var parent = el.parentElement || el;
+        if (parent.querySelector(".clawhouse-brand-logo")) return;
+        var img = document.createElement("img");
+        img.src = logoUrl;
+        img.alt = "ClawHouse";
+        img.className = "clawhouse-brand-logo";
+        parent.insertBefore(img, parent.firstChild);
+      });
+
+      var welcome = Array.prototype.find.call(document.querySelectorAll("div,section,main"), function (el) {
+        return (el.textContent || "").indexOf("WELCOME TO CLAWHOUSE") >= 0;
+      });
+      if (welcome && !welcome.querySelector(".clawhouse-hero-logo")) {
+        var hero = document.createElement("img");
+        hero.src = logoUrl;
+        hero.alt = "ClawHouse";
+        hero.className = "clawhouse-hero-logo";
+        welcome.insertBefore(hero, welcome.firstChild);
+      }
+    }
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", applyLogo);
+    } else {
+      applyLogo();
+    }
+    new MutationObserver(applyLogo).observe(document.documentElement, { childList: true, subtree: true });
+  }
+
   window.electron = {
     platform: "browser",
     isDev: true,
     openExternal: function (url) {
-      window.open(url, "_blank", "noopener,noreferrer");
+      if (isRegisterUrl(url)) {
+        window.location.href = "http://127.0.0.1:3001/clawhouse/key.html";
+      } else {
+        window.open(url, "_blank", "noopener,noreferrer");
+      }
       return Promise.resolve();
     },
     ipcRenderer: {
@@ -122,6 +215,9 @@
         if (channel === "app:name") return Promise.resolve("ClawHouse");
         if (channel === "app:platform") return Promise.resolve("browser");
         if (channel === "app:request") return unsupported("app:request");
+        if (channel === "openclaw:getSkillsDir") return Promise.resolve({ ok: true, dir: "" });
+        if (channel === "openclaw:openSkillsDir") return Promise.resolve({ ok: false });
+        if (channel === "openclaw:reloadSkills") return Promise.resolve({ ok: true });
         if (channel === "lobster:onboarding:mark-completed") {
           return markOnboardingCompleted();
         }
@@ -211,4 +307,6 @@
       createShopSession: function () { return Promise.resolve({ ok: false, error: "browser mode" }); }
     }
   };
+
+  injectBranding();
 })();
