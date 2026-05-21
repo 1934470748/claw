@@ -229,10 +229,13 @@ function getOpenClawConfigCandidatesLegacy() {
 function getOpenClawConfigCandidates() {
   const candidates = [
     process.env.OPENCLAW_CONFIG_PATH,
+    path.resolve(process.cwd(), "../新版小龙虾/data/openclaw/openclaw.json"),
+    "C:/Users/PC/Desktop/新版小龙虾/data/openclaw/openclaw.json",
     path.join(process.env.USERPROFILE || "", ".openclaw/openclaw.json")
   ].filter(Boolean);
 
   const desktop = path.join(process.env.USERPROFILE || "", "Desktop");
+  candidates.push(path.join(desktop, "新版小龙虾", "data/openclaw/openclaw.json"));
   try {
     for (const entry of fs.readdirSync(desktop, { withFileTypes: true })) {
       if (!entry.isDirectory()) continue;
@@ -244,6 +247,9 @@ function getOpenClawConfigCandidates() {
 }
 
 function writeOpenClawConfigTextFallback(filePath, profile, apiKey) {
+  const providerKey = getOpenClawProviderKey(profile);
+  const modelRef = `${providerKey}/${profile.modelId}`;
+  const providerBaseUrl = getOpenClawProviderBaseUrl(profile);
   let content = fs.readFileSync(filePath, "utf8");
   const replaceStringProp = (source, prop, value) => {
     const escaped = String(value).replace(/\\/g, "\\\\").replace(/"/g, '\\"');
@@ -254,12 +260,21 @@ function writeOpenClawConfigTextFallback(filePath, profile, apiKey) {
   };
 
   content = replaceStringProp(content, "apiKey", apiKey);
-  content = replaceStringProp(content, "baseUrl", profile.baseUrl);
-  content = content.replace(/"primary"\s*:\s*"clawhouse\/[^"]+"/, `"primary": "clawhouse/${profile.modelId}"`);
+  content = replaceStringProp(content, "baseUrl", providerBaseUrl);
+  content = content.replace(/"primary"\s*:\s*"[^"]+\/[^"]+"/, `"primary": "${modelRef}"`);
   fs.writeFileSync(filePath, content, "utf8");
 }
 
-function syncOpenClawAuthProfiles(configPath, apiKey) {
+function getOpenClawProviderKey(profile) {
+  return profile?.key === "newapi" || profile?.key === "custom" ? "clawhouse" : profile?.key || "clawhouse";
+}
+
+function getOpenClawProviderBaseUrl(profile) {
+  if (profile?.key === "deepseek") return "https://api.deepseek.com";
+  return profile?.baseUrl;
+}
+
+function syncOpenClawAuthProfiles(configPath, apiKey, providerKey = "clawhouse") {
   const authPath = path.join(path.dirname(configPath), "agents/main/agent/auth-profiles.json");
   try {
     let authConfig = { version: 1, profiles: {} };
@@ -267,15 +282,63 @@ function syncOpenClawAuthProfiles(configPath, apiKey) {
       authConfig = JSON.parse(fs.readFileSync(authPath, "utf8"));
     }
     if (!authConfig.profiles) authConfig.profiles = {};
-    authConfig.profiles["clawhouse:default"] = {
+    authConfig.profiles[`${providerKey}:default`] = {
       type: "api_key",
-      provider: "clawhouse",
+      provider: providerKey,
       key: apiKey
     };
     fs.mkdirSync(path.dirname(authPath), { recursive: true });
     fs.writeFileSync(authPath, JSON.stringify(authConfig, null, 2), "utf8");
   } catch (error) {
     console.warn(`[sync] Failed to update OpenClaw auth profiles: ${error.message}`);
+  }
+}
+
+function syncClawxProviders(openClawConfigPath, profile, apiKey, providerKey) {
+  const appDataDir = path.resolve(path.dirname(openClawConfigPath), "..");
+  const providersPath = path.join(appDataDir, "clawx-providers.json");
+  if (!fs.existsSync(providersPath)) return;
+
+  try {
+    const nowIso = now();
+    const modelRef = `${providerKey}/${profile.modelId}`;
+    const baseUrl = getOpenClawProviderBaseUrl(profile);
+    const label = profile.modelAlias || profile.key || providerKey;
+    const data = JSON.parse(fs.readFileSync(providersPath, "utf8"));
+    if (!data.providers) data.providers = {};
+    if (!data.providerAccounts) data.providerAccounts = {};
+    if (!data.apiKeys) data.apiKeys = {};
+    if (!data.providerSecrets) data.providerSecrets = {};
+
+    for (const account of Object.values(data.providerAccounts)) {
+      if (account && typeof account === "object") account.isDefault = false;
+    }
+
+    data.providerAccounts[providerKey] = {
+      ...(data.providerAccounts[providerKey] || {}),
+      id: providerKey,
+      vendorId: providerKey === "clawhouse" ? "custom" : providerKey,
+      label: providerKey === "clawhouse" ? "ClawHouse" : label,
+      authMode: "api_key",
+      baseUrl,
+      model: modelRef,
+      enabled: true,
+      isDefault: true,
+      createdAt: data.providerAccounts[providerKey]?.createdAt || nowIso,
+      updatedAt: nowIso
+    };
+    data.apiKeys[providerKey] = apiKey;
+    data.providerSecrets[providerKey] = {
+      type: "api_key",
+      accountId: providerKey,
+      apiKey
+    };
+    data.defaultProvider = providerKey;
+    data.defaultProviderAccountId = providerKey;
+
+    fs.writeFileSync(providersPath, JSON.stringify(data, null, 2), "utf8");
+  } catch (error) {
+    console.warn(`[sync] Failed to update ClawHouse provider store: ${error.message}`);
   }
 }
 
@@ -287,7 +350,11 @@ function syncOpenClawProviderConfig({ apiKey, baseUrl }) {
     modelId: env.defaultModel,
     modelAlias: env.defaultModel
   };
+  const providerKey = getOpenClawProviderKey(profile);
+  const modelRef = `${providerKey}/${profile.modelId}`;
+  const providerBaseUrl = getOpenClawProviderBaseUrl(profile);
 
+  let updated = false;
   for (const filePath of getOpenClawConfigCandidates()) {
     if (!fs.existsSync(filePath)) continue;
     try {
@@ -296,30 +363,32 @@ function syncOpenClawProviderConfig({ apiKey, baseUrl }) {
         const ocConfig = JSON.parse(content);
         if (!ocConfig.models) ocConfig.models = {};
         if (!ocConfig.models.providers) ocConfig.models.providers = {};
-        ocConfig.models.providers.clawhouse = {
-          ...(ocConfig.models.providers.clawhouse || {}),
+        ocConfig.models.providers[providerKey] = {
+          ...(ocConfig.models.providers[providerKey] || {}),
           api: "openai-completions",
           apiKey,
-          baseUrl: profile.baseUrl,
+          baseUrl: providerBaseUrl,
           models: [{ id: profile.modelId, name: profile.modelAlias }]
         };
         if (!ocConfig.agents) ocConfig.agents = {};
         if (!ocConfig.agents.defaults) ocConfig.agents.defaults = {};
         if (!ocConfig.agents.defaults.model) ocConfig.agents.defaults.model = {};
-        ocConfig.agents.defaults.model.primary = `clawhouse/${profile.modelId}`;
+        ocConfig.agents.defaults.model.primary = modelRef;
         if (!ocConfig.agents.defaults.models) ocConfig.agents.defaults.models = {};
-        ocConfig.agents.defaults.models[`clawhouse/${profile.modelId}`] = { alias: profile.modelAlias };
+        ocConfig.agents.defaults.models[modelRef] = { alias: profile.modelAlias };
         fs.writeFileSync(filePath, JSON.stringify(ocConfig, null, 2), "utf8");
       } catch {
         writeOpenClawConfigTextFallback(filePath, profile, apiKey);
       }
-      syncOpenClawAuthProfiles(filePath, apiKey);
-      console.log(`[sync] OpenClaw config updated: provider=${profile.key} baseUrl=${profile.baseUrl} model=${profile.modelId} apiKey=${maskSecret(apiKey)}`);
-      return profile;
+      syncOpenClawAuthProfiles(filePath, apiKey, providerKey);
+      syncClawxProviders(filePath, { ...profile, baseUrl: providerBaseUrl }, apiKey, providerKey);
+      console.log(`[sync] OpenClaw config updated: provider=${providerKey} baseUrl=${providerBaseUrl} model=${profile.modelId} apiKey=${maskSecret(apiKey)}`);
+      updated = true;
     } catch (error) {
       console.warn(`[sync] Failed to update OpenClaw config ${filePath}: ${error.message}`);
     }
   }
+  if (updated) return profile;
   return profile;
 }
 
