@@ -1,0 +1,13 @@
+﻿node_modules/
+.env
+.env.*
+!.env.example
+data/
+logs/
+*.sqlite
+*.sqlite-*
+*.asar
+*.exe
+*.dll
+*.pak
+.DS_Store

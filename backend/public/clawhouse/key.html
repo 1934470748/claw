@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClawHouse Key</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #070d1a;
+        --panel: #101b31;
+        --line: rgba(255, 255, 255, 0.12);
+        --text: #eef4ff;
+        --muted: #8fa2c7;
+        --accent: #ff6b35;
+        --accent-soft: rgba(255, 107, 53, 0.16);
+        --ok: #18d49b;
+        --err: #ff5964;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
+        background:
+          radial-gradient(circle at 50% -12%, rgba(255, 107, 53, 0.22), transparent 38%),
+          linear-gradient(180deg, #081121 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      main {
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 32px 18px;
+      }
+
+      .wrap { width: min(560px, 100%); }
+
+      .eyebrow {
+        color: var(--accent);
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.14em;
+        text-align: center;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 10px 0 22px;
+        text-align: center;
+        font-size: clamp(30px, 5vw, 42px);
+        line-height: 1.12;
+      }
+
+      .card {
+        border: 1px solid var(--line);
+        background: rgba(16, 27, 49, 0.9);
+        border-radius: 14px;
+        padding: 20px;
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 18px;
+      }
+
+      button, input {
+        width: 100%;
+        border-radius: 10px;
+        font: inherit;
+      }
+
+      button {
+        border: 0;
+        min-height: 44px;
+        color: var(--text);
+        cursor: pointer;
+        font-weight: 800;
+      }
+
+      .tab {
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--muted);
+      }
+
+      .tab.active {
+        border-color: rgba(255, 107, 53, 0.55);
+        background: var(--accent-soft);
+        color: var(--text);
+      }
+
+      .field { margin: 14px 0; }
+
+      label {
+        display: block;
+        margin-bottom: 7px;
+        color: #c8d5ee;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      input {
+        border: 1px solid var(--line);
+        background: #0a1427;
+        color: var(--text);
+        outline: none;
+        min-height: 46px;
+        padding: 0 13px;
+      }
+
+      input:focus {
+        border-color: rgba(255, 107, 53, 0.76);
+        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.13);
+      }
+
+      .primary {
+        margin-top: 10px;
+        background: linear-gradient(135deg, var(--accent), #ff8a4a);
+        color: #1b0b05;
+      }
+
+      .secondary {
+        margin-top: 10px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.05);
+      }
+
+      .status {
+        min-height: 22px;
+        margin: 13px 0 0;
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.5;
+      }
+
+      .status.error { color: var(--err); }
+      .status.ok { color: var(--ok); }
+
+      .result {
+        display: none;
+        margin-top: 18px;
+        padding-top: 18px;
+        border-top: 1px solid var(--line);
+      }
+
+      .keybox {
+        overflow-wrap: anywhere;
+        border: 1px solid rgba(24, 212, 155, 0.35);
+        border-radius: 10px;
+        background: rgba(24, 212, 155, 0.08);
+        color: #d7fff2;
+        padding: 13px;
+        font-family: "Cascadia Mono", Consolas, monospace;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .step {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255, 255, 255, 0.035);
+        padding: 12px;
+      }
+
+      .step b {
+        display: block;
+        margin-bottom: 6px;
+        color: var(--accent);
+        font-size: 11px;
+      }
+
+      .step span {
+        display: block;
+        color: #dce6fb;
+        font-size: 13px;
+        font-weight: 800;
+      }
+
+      @media (max-width: 560px) {
+        .steps { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="wrap">
+        <div class="eyebrow">ClawHouse</div>
+        <h1>&#29983;&#25104; API Key</h1>
+
+        <div class="card">
+          <div class="tabs" role="tablist">
+            <button class="tab active" id="registerTab" type="button">&#27880;&#20876;&#36134;&#21495;</button>
+            <button class="tab" id="loginTab" type="button">&#30331;&#24405;&#36134;&#21495;</button>
+          </div>
+
+          <form id="keyForm">
+            <div class="field">
+              <label for="username">&#36134;&#21495;</label>
+              <input id="username" autocomplete="username" placeholder="&#36755;&#20837;&#36134;&#21495;" required />
+            </div>
+
+            <div class="field">
+              <label for="password">&#23494;&#30721;</label>
+              <input id="password" type="password" autocomplete="current-password" placeholder="&#36755;&#20837;&#23494;&#30721;" required />
+            </div>
+
+            <div id="confirmField" class="field">
+              <label for="confirmPassword">&#30830;&#35748;&#23494;&#30721;</label>
+              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="&#20877;&#36755;&#20837;&#19968;&#27425;&#23494;&#30721;" />
+            </div>
+
+            <button class="primary" id="submitBtn" type="submit">&#27880;&#20876;&#24182;&#29983;&#25104; Key</button>
+            <p class="status" id="status"></p>
+          </form>
+
+          <div class="result" id="result">
+            <label>&#20320;&#30340; API Key</label>
+            <div class="keybox" id="keyValue"></div>
+            <button class="secondary" id="copyBtn" type="button">&#22797;&#21046; Key</button>
+            <button class="primary" id="backBtn" type="button">&#22797;&#21046;&#24182;&#36820;&#22238;&#23458;&#25143;&#31471;</button>
+          </div>
+        </div>
+
+        <div class="steps">
+          <div class="step"><b>01</b><span>&#27880;&#20876;&#25110;&#30331;&#24405;</span></div>
+          <div class="step"><b>02</b><span>&#29983;&#25104; Key</span></div>
+          <div class="step"><b>03</b><span>&#36820;&#22238;&#32465;&#23450;</span></div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const clientUrl = "http://localhost:4173/app/dist/?v=7#/console";
+      let mode = "register";
+      let issuedKey = "";
+
+      const registerTab = document.querySelector("#registerTab");
+      const loginTab = document.querySelector("#loginTab");
+      const confirmField = document.querySelector("#confirmField");
+      const form = document.querySelector("#keyForm");
+      const submitBtn = document.querySelector("#submitBtn");
+      const statusEl = document.querySelector("#status");
+      const resultEl = document.querySelector("#result");
+      const keyValueEl = document.querySelector("#keyValue");
+      const copyBtn = document.querySelector("#copyBtn");
+      const backBtn = document.querySelector("#backBtn");
+
+      function text(value) {
+        return value;
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        registerTab.classList.toggle("active", mode === "register");
+        loginTab.classList.toggle("active", mode === "login");
+        confirmField.style.display = mode === "register" ? "block" : "none";
+        submitBtn.textContent = mode === "register" ? text("\u6ce8\u518c\u5e76\u751f\u6210 Key") : text("\u767b\u5f55\u5e76\u751f\u6210 Key");
+        statusEl.textContent = "";
+        statusEl.className = "status";
+      }
+
+      function setStatus(message, type = "") {
+        statusEl.textContent = message;
+        statusEl.className = `status ${type}`;
+      }
+
+      async function copyKey() {
+        if (!issuedKey) return;
+        try {
+          await navigator.clipboard.writeText(issuedKey);
+        } catch (error) {
+          const textarea = document.createElement("textarea");
+          textarea.value = issuedKey;
+          textarea.setAttribute("readonly", "");
+          textarea.style.position = "fixed";
+          textarea.style.left = "-9999px";
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand("copy");
+          document.body.removeChild(textarea);
+        }
+        setStatus(text("Key \u5df2\u590d\u5236"), "ok");
+      }
+
+      async function requestKey(event) {
+        event.preventDefault();
+        const username = document.querySelector("#username").value.trim();
+        const password = document.querySelector("#password").value;
+        const confirmPassword = document.querySelector("#confirmPassword").value;
+
+        if (!username || !password) {
+          setStatus(text("\u8bf7\u586b\u5199\u8d26\u53f7\u548c\u5bc6\u7801"), "error");
+          return;
+        }
+        if (mode === "register" && password !== confirmPassword) {
+          setStatus(text("\u4e24\u6b21\u8f93\u5165\u7684\u5bc6\u7801\u4e0d\u4e00\u81f4"), "error");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        setStatus(mode === "register" ? text("\u6b63\u5728\u6ce8\u518c\u5e76\u751f\u6210 Key...") : text("\u6b63\u5728\u767b\u5f55\u5e76\u751f\u6210 Key..."));
+
+        try {
+          const endpoint = mode === "register" ? "/api/clawhouse/register-and-issue-key" : "/api/clawhouse/login-and-issue-key";
+          const response = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, password })
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success || !data.key) {
+            throw new Error(data.error || data.message || "\u751f\u6210 Key \u5931\u8d25");
+          }
+
+          issuedKey = data.key;
+          keyValueEl.textContent = issuedKey;
+          resultEl.style.display = "block";
+          setStatus(text("Key \u5df2\u751f\u6210"), "ok");
+        } catch (error) {
+          setStatus(error.message || text("\u8bf7\u7a0d\u540e\u91cd\u8bd5"), "error");
+        } finally {
+          submitBtn.disabled = false;
+        }
+      }
+
+      registerTab.addEventListener("click", () => setMode("register"));
+      loginTab.addEventListener("click", () => setMode("login"));
+      form.addEventListener("submit", requestKey);
+      copyBtn.addEventListener("click", copyKey);
+      backBtn.addEventListener("click", async () => {
+        try {
+          await copyKey();
+        } finally {
+          window.location.assign(clientUrl);
+        }
+      });
+      setMode("register");
+    </script>
+  </body>
+</html>

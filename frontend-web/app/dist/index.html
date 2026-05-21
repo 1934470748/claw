@@ -1,0 +1,29 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Allow the ClawHouse Shop webview to load from the bare-IP Gateway.
+         Electron <webview> elements are governed by the parent frame's CSP
+         frame-src/child-src directives in addition to the webview's own CSP.
+         'self' covers the local file:// origin used in production builds.
+
+         搂39: img-src + media-src include `clawhouse-media:` so renderer-side
+         <img> / <video> tags can stream from the disk-resident media-gen/
+         directory via the custom protocol registered in electron/main/index.ts.
+         The protocol is registered with `secure:true` so Chromium treats it
+         as a trusted origin under standard CSP 鈥?`bypassCSP:false` is the
+         搂39 invariant guarantee. blob: covers any future client-side
+         transformation (thumbnail crop, etc.). -->
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'self'; connect-src 'self' http://127.0.0.1:3001 http://localhost:3001 ws://127.0.0.1:3001 ws://localhost:3001; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https: clawhouse-media: blob:; media-src 'self' clawhouse-media: blob:; frame-src 'self' https://124.220.216.160; child-src 'self' https://124.220.216.160;" />
+    <title>ClawHouse</title>
+    <script src="./assets/browser-electron-shim.js?v=8"></script>
+    <script type="module" crossorigin src="./assets/index-BeCSZdfy.js?v=8"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BIorwAlY.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
