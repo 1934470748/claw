@@ -38,7 +38,15 @@ export class NewApiService {
   }
 
   async request(path, { method = "GET", body, apiKey, accessToken, userId, sessionCookie, timeoutMs = 30000 } = {}) {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    let baseUrl = this.baseUrl;
+    let requestPath = path;
+    if (baseUrl.endsWith("/v1") && requestPath.startsWith("/v1/")) {
+      requestPath = requestPath.slice(3);
+    }
+    if (baseUrl.endsWith("/v1") && requestPath.startsWith("/api/")) {
+      baseUrl = baseUrl.slice(0, -3);
+    }
+    const response = await fetch(`${baseUrl}${requestPath}`, {
       method,
       headers: authHeaders({ apiKey, accessToken, userId, sessionCookie }),
       body: body === undefined ? undefined : JSON.stringify(body),
