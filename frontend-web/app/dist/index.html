@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="./assets/clawhouse-logo.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Allow the ClawHouse Shop webview to load from the bare-IP Gateway.
+    <!-- Allow local MianClaw services to load inside the shell.
          Electron <webview> elements are governed by the parent frame's CSP
          frame-src/child-src directives in addition to the webview's own CSP.
          'self' covers the local file:// origin used in production builds.
@@ -17,10 +17,26 @@
          搂39 invariant guarantee. blob: covers any future client-side
          transformation (thumbnail crop, etc.). -->
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'self'; connect-src 'self' http://127.0.0.1:3001 http://localhost:3001 ws://127.0.0.1:3001 ws://localhost:3001; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: clawhouse-media: blob:; media-src 'self' clawhouse-media: blob:; frame-src 'self' https://124.220.216.160; child-src 'self' https://124.220.216.160;" />
+          content="default-src 'self'; connect-src 'self' http://127.0.0.1:3001 http://localhost:3001 ws://127.0.0.1:3001 ws://localhost:3001; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: https: clawhouse-media: blob:; media-src 'self' clawhouse-media: blob:; frame-src 'self' http://127.0.0.1:3001 http://localhost:3001; child-src 'self' http://127.0.0.1:3001 http://localhost:3001;" />
     <title>MianClaw</title>
     <script src="./assets/browser-electron-shim.js?v=12"></script>
-    <script src="./assets/mianclaw-runtime-fixes.js?v=4"></script>
+    <script src="./assets/mianclaw-runtime-fixes.js?v=10"></script>
+    <script>
+      window.__mianclawInlineRuntimeLoaded = true;
+      document.addEventListener("click", function (event) {
+        var el = event.target && event.target.closest ? event.target.closest("button,a,[role=button]") : null;
+        if (!el) return;
+        var text = (el.textContent || "").trim();
+        var target = "";
+        if (text.indexOf("\u6ce8\u518c\u8d26\u53f7") >= 0 || text.indexOf("\u524d\u5f80\u6ce8\u518c") >= 0 || text.indexOf("\u6253\u5f00\u6ce8\u518c\u9875") >= 0) target = "http://127.0.0.1:3001/mianclaw/key.html";
+        if (text.indexOf("\u5b89\u88c5\u6280\u80fd") >= 0) target = "https://clawhub.ai";
+        if (!target) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (window.electron && typeof window.electron.openExternal === "function") window.electron.openExternal(target);
+        else window.location.href = target;
+      }, true);
+    </script>
     <script type="module" crossorigin src="./assets/index-BeCSZdfy.js?v=10"></script>
     <link rel="stylesheet" crossorigin href="./assets/index-BIorwAlY.css">
   </head>
@@ -28,3 +44,8 @@
     <div id="root"></div>
   </body>
 </html>
+
+
+
+
+

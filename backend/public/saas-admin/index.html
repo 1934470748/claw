@@ -7,60 +7,177 @@
     <link rel="stylesheet" href="./style.css" />
   </head>
   <body>
-    <aside>
-      <div class="brand">
-        <img src="../clawhouse/logo.png" alt="" />
-        <div>
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="MianClaw SaaS Admin">
+        <img src="../mianclaw/logo.png" alt="" />
+        <span>
           <strong>MianClaw</strong>
-          <span>SaaS Admin</span>
-        </div>
-      </div>
+          <small>SaaS Admin</small>
+        </span>
+      </a>
       <nav>
-        <a class="active" href="#overview">概览</a>
+        <a class="active" href="#overview">总览</a>
         <a href="#users">用户</a>
-        <a href="#keys">Key 管理</a>
-        <a href="#usage">用量分析</a>
         <a href="#plans">套餐</a>
-        <a href="#updates">更新发布</a>
+        <a href="#updates">更新</a>
+        <a href="#runtime">运行</a>
       </nav>
+      <div class="side-note">
+        <span>本地模式</span>
+        <strong>NewAPI 主流程明天接入</strong>
+      </div>
     </aside>
+
     <main>
-      <header>
+      <header class="topbar">
         <div>
-          <p class="eyebrow">MianClaw Console</p>
-          <h1>运营后台骨架</h1>
+          <p class="eyebrow">运营控制台</p>
+          <h1>MianClaw SaaS 工作台</h1>
+          <p class="lead">先把账号、套餐、额度、版本发布和本地运行状态跑通，中转站主链路单独接。</p>
         </div>
-        <button id="refresh">刷新本地数据</button>
+        <div class="actions">
+          <button class="ghost" id="themeToggle" type="button">切换颜色</button>
+          <button id="refresh" type="button">刷新数据</button>
+        </div>
       </header>
-      <section class="stats">
-        <article><span>注册用户</span><strong id="users">0</strong></article>
-        <article><span>活跃 Key</span><strong id="keys">0</strong></article>
-        <article><span>今日 Tokens</span><strong id="tokens">0</strong></article>
-        <article><span>服务状态</span><strong id="status">检查中</strong></article>
-      </section>
-      <section class="grid">
+
+      <section id="overview" class="stats">
         <article>
-          <h2>账号与 Key</h2>
-          <p>后续接入 NewAPI 管理员接口后，这里负责创建用户、签发专用 Key、重置额度与查看余额。</p>
-          <div class="rows" id="keyRows"></div>
+          <span>用户数</span>
+          <strong id="statUsers">0</strong>
+          <small>本地 SaaS 用户</small>
         </article>
         <article>
-          <h2>用量与成本</h2>
-          <p>展示请求次数、模型分布、Token 消耗和错误趋势；官方厂商 Key 会走本地统计。</p>
-          <div class="chart"><span></span><span></span><span></span><span></span></div>
+          <span>已签发 Key</span>
+          <strong id="statKeys">0</strong>
+          <small>只显示脱敏 Key</small>
         </article>
         <article>
-          <h2>套餐与支付</h2>
-          <p>推荐用 nextjs/saas-starter 承接正式 auth、RBAC、Stripe 和团队管理。</p>
-          <button>查看接入计划</button>
+          <span>总额度</span>
+          <strong id="statQuota">0</strong>
+          <small>本地可用额度池</small>
         </article>
         <article>
-          <h2>客户端更新</h2>
-          <p>维护版本号、下载地址和发布说明，给桌面端 `/api/update/status` 使用。</p>
-          <button>准备发布配置</button>
+          <span>运行状态</span>
+          <strong id="statRuntime">检测中</strong>
+          <small id="runtimeHint">正在连接本地服务</small>
         </article>
       </section>
+
+      <section class="layout">
+        <article id="users" class="panel wide">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Users</p>
+              <h2>用户与 Key</h2>
+            </div>
+            <button class="ghost" id="seedUser" type="button">创建示例用户</button>
+          </div>
+
+          <form class="form-grid" id="userForm">
+            <label>
+              用户名
+              <input name="name" placeholder="例如：测试用户" required />
+            </label>
+            <label>
+              邮箱
+              <input name="email" type="email" placeholder="user@example.com" />
+            </label>
+            <label>
+              套餐
+              <select name="planId" id="planSelect"></select>
+            </label>
+            <label>
+              额度
+              <input name="quota" type="number" min="0" step="1000" value="1000000" />
+            </label>
+            <label class="span-2">
+              备注
+              <input name="notes" placeholder="客户来源、售后说明、内部备注" />
+            </label>
+            <button type="submit">新增用户</button>
+          </form>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>用户</th>
+                  <th>套餐</th>
+                  <th>额度</th>
+                  <th>Key</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="usersTable"></tbody>
+            </table>
+          </div>
+        </article>
+
+        <article id="plans" class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Plans</p>
+              <h2>套餐配置</h2>
+            </div>
+          </div>
+          <form class="stack" id="planForm">
+            <input name="id" placeholder="套餐 ID，如 pro" required />
+            <input name="name" placeholder="套餐名称" required />
+            <input name="price" type="number" min="0" step="1" placeholder="价格" />
+            <input name="quota" type="number" min="0" step="1000" placeholder="额度" />
+            <textarea name="description" rows="3" placeholder="套餐说明"></textarea>
+            <button type="submit">保存套餐</button>
+          </form>
+          <div id="plansList" class="list"></div>
+        </article>
+
+        <article id="updates" class="panel">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Release</p>
+              <h2>客户端更新</h2>
+            </div>
+          </div>
+          <form class="stack" id="updateForm">
+            <input name="version" placeholder="版本号，例如 0.3.10" />
+            <input name="downloadUrl" placeholder="下载地址，部署后填写" />
+            <textarea name="notes" rows="5" placeholder="发布说明"></textarea>
+            <button type="submit">保存发布配置</button>
+          </form>
+          <div class="release-card" id="releaseCard"></div>
+        </article>
+
+        <article id="runtime" class="panel wide">
+          <div class="panel-head">
+            <div>
+              <p class="eyebrow">Runtime</p>
+              <h2>本地服务与日志</h2>
+            </div>
+            <button class="ghost" id="reloadLogs" type="button">读取日志</button>
+          </div>
+          <div class="runtime-grid">
+            <div>
+              <span>后端</span>
+              <strong id="backendState">检测中</strong>
+            </div>
+            <div>
+              <span>Gateway</span>
+              <strong id="gatewayState">检测中</strong>
+            </div>
+            <div>
+              <span>更新源</span>
+              <strong id="updateState">本地</strong>
+            </div>
+          </div>
+          <pre id="logs"></pre>
+        </article>
+      </section>
+
+      <div class="toast" id="toast" role="status" aria-live="polite"></div>
     </main>
+
     <script src="./main.js"></script>
   </body>
 </html>

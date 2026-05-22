@@ -23,7 +23,7 @@ import { newapi } from "./services/newapi.service.js";
 
 const app = express();
 const port = env.port;
-// ClawHouse bundled Gateway runs on 18866 (not the env variable 18789)
+// MianClaw bundled Gateway runs on 18866 (not the env variable 18789)
 const gatewayPort = 18866;
 const gatewayUrl = `http://127.0.0.1:${gatewayPort}`;
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -33,6 +33,7 @@ app.use(express.json({ limit: "25mb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 app.use("/clawhouse", express.static(path.join(__dirname, "../public/clawhouse")));
+app.use("/mianclaw", express.static(path.join(__dirname, "../public/clawhouse")));
 app.use("/saas-admin", express.static(path.join(__dirname, "../public/saas-admin")));
 
 function ok(res, body = {}) {
@@ -86,6 +87,67 @@ function maskSecret(value) {
   const text = String(value);
   if (text.length <= 10) return "****";
   return `${text.slice(0, 6)}...${text.slice(-4)}`;
+}
+
+function issueLocalKey() {
+  return `mc-${crypto.randomBytes(24).toString("hex")}`;
+}
+
+function publicSaasUser(user) {
+  if (!user) return null;
+  const key = user.apiKey || "";
+  return {
+    ...user,
+    apiKey: undefined,
+    keyPreview: user.keyPreview || maskSecret(key),
+    hasKey: Boolean(key)
+  };
+}
+
+function normalizeSaasUser(payload = {}) {
+  const id = payload.id || makeId("usr");
+  return {
+    id,
+    name: payload.name || payload.username || "New User",
+    email: payload.email || "",
+    status: payload.status || "active",
+    planId: payload.planId || "starter",
+    quota: Number(payload.quota ?? 1000000),
+    usedQuota: Number(payload.usedQuota ?? 0),
+    newapiUserId: payload.newapiUserId || null,
+    notes: payload.notes || ""
+  };
+}
+
+function normalizeSaasPlan(payload = {}) {
+  const id = payload.id || makeId("plan");
+  return {
+    id,
+    name: payload.name || "Starter",
+    price: Number(payload.price ?? 0),
+    quota: Number(payload.quota ?? 1000000),
+    status: payload.status || "active",
+    description: payload.description || ""
+  };
+}
+
+function ensureSaasDefaults() {
+  if (listTable("saas_plans").length === 0) {
+    [
+      { id: "starter", name: "Starter", price: 0, quota: 1000000, description: "???????" },
+      { id: "pro", name: "Pro", price: 39, quota: 10000000, description: "????????" },
+      { id: "team", name: "Team", price: 199, quota: 80000000, description: "?????????" }
+    ].forEach((plan) => saveTableItem("saas_plans", "id", plan.id, normalizeSaasPlan(plan)));
+  }
+  if (!getTableItem("update_manifests", "id", "stable")) {
+    saveTableItem("update_manifests", "id", "stable", {
+      id: "stable",
+      version: process.env.APP_VERSION || "0.3.9",
+      notes: "MianClaw local MVP build",
+      downloadUrl: "",
+      publishedAt: now()
+    });
+  }
 }
 
 /**
@@ -180,7 +242,7 @@ function inferProviderProfile(apiKey, baseUrl) {
   if (url.includes("minimax.chat")) return { key: "minimax", ...providerProfiles.minimax, baseUrl: normalizeApiBaseUrl(url) };
   if (url.includes("stepfun.com")) return { key: "stepfun", ...providerProfiles.stepfun, baseUrl: normalizeApiBaseUrl(url) };
   if (url.includes("openrouter.ai")) return { key: "openrouter", ...providerProfiles.openrouter, baseUrl: normalizeApiBaseUrl(url) };
-  if (url.includes("ovov.fun") || url.includes("124.220.216.160")) return { key: "newapi", ...providerProfiles.newapi, baseUrl: normalizeApiBaseUrl(url) };
+  if (url.includes("ovov.fun")) return { key: "newapi", ...providerProfiles.newapi, baseUrl: normalizeApiBaseUrl(url) };
 
   if (!key) return null;
   if (key.startsWith("sk-Nso5z")) return { key: "siliconflow", ...providerProfiles.siliconflow };
@@ -215,7 +277,7 @@ function getDefaultBaseUrl(apiKey) {
 
 function isNewApiBaseUrl(baseUrl) {
   const url = String(baseUrl || "");
-  return url.includes("api.ovov.fun") || url.includes("124.220.216.160");
+  return url.includes("api.ovov.fun");
 }
 
 function getOpenClawConfigCandidatesLegacy() {
@@ -319,7 +381,7 @@ function syncClawxProviders(openClawConfigPath, profile, apiKey, providerKey) {
       ...(data.providerAccounts[providerKey] || {}),
       id: providerKey,
       vendorId: providerKey === "clawhouse" ? "custom" : providerKey,
-      label: providerKey === "clawhouse" ? "ClawHouse" : label,
+      label: providerKey === "clawhouse" ? "MianClaw" : label,
       authMode: "api_key",
       baseUrl,
       model: modelRef,
@@ -339,7 +401,7 @@ function syncClawxProviders(openClawConfigPath, profile, apiKey, providerKey) {
 
     fs.writeFileSync(providersPath, JSON.stringify(data, null, 2), "utf8");
   } catch (error) {
-    console.warn(`[sync] Failed to update ClawHouse provider store: ${error.message}`);
+    console.warn(`[sync] Failed to update MianClaw provider store: ${error.message}`);
   }
 }
 
@@ -637,6 +699,52 @@ function getChannelStatus() {
   return { supported, configured, channels: configured, accounts: [], defaultAccountId: null };
 }
 
+function getDesktopAppRoot() {
+  const backendRoot = path.resolve(__dirname, "..");
+  return path.join(path.dirname(backendRoot), path.basename(backendRoot).slice(0, -2));
+}
+
+function scanLocalSkills() {
+  const appRoot = getDesktopAppRoot();
+  const roots = [
+    path.join(appRoot, "resources/openclaw/skills"),
+    path.join(appRoot, "resources/openclaw/dist/extensions/browser/skills"),
+    path.join(appRoot, "data/openclaw/plugin-skills")
+  ];
+  const skills = [];
+  for (const rootDir of roots) {
+    try {
+      for (const entry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue;
+        const dir = path.join(rootDir, entry.name);
+        const readme = path.join(dir, "SKILL.md");
+        let description = "";
+        try {
+          description = fs.readFileSync(readme, "utf8").split(/\r?\n/).find((line) => line.trim() && !line.startsWith("#")) || "";
+        } catch {}
+        skills.push({
+          id: entry.name,
+          slug: entry.name,
+          name: entry.name,
+          description: description || "Local MianClaw skill",
+          version: "1.0.0",
+          enabled: true,
+          installed: true,
+          isBundled: !rootDir.includes("plugin-skills"),
+          baseDir: dir,
+          source: rootDir.includes("plugin-skills") ? "local" : "built-in"
+        });
+      }
+    } catch {}
+  }
+  const seen = new Set();
+  return skills.filter((skill) => {
+    if (seen.has(skill.id)) return false;
+    seen.add(skill.id);
+    return true;
+  });
+}
+
 function listCronJobs() {
   const jobs = listTable("cron_jobs");
   return {
@@ -652,9 +760,10 @@ function listCronJobs() {
 }
 
 function getSkillsStatus() {
+  const skills = scanLocalSkills();
   return {
-    skills: [],
-    items: [],
+    skills,
+    items: skills,
     catalogs: [
       { id: "builtin", name: "Built-in", enabled: true },
       { id: "market", name: "Market", enabled: true }
@@ -678,7 +787,7 @@ function normalizeCronJob(value = {}) {
 
 function readRuntimeLogs(limit = 200) {
   const backendRoot = path.resolve(__dirname, "..");
-  const appRoot = path.join(path.dirname(backendRoot), path.basename(backendRoot).slice(0, -2));
+  const appRoot = getDesktopAppRoot();
   const logDirs = [
     path.resolve(process.cwd(), "logs"),
     path.resolve(process.cwd(), "data/logs"),
@@ -724,13 +833,18 @@ function readRuntimeLogs(limit = 200) {
   if (!filePath) return { file: null, content: "", lines: [], entries: [], total: 0, updatedAt: now() };
   const logLines = fs.readFileSync(filePath, "utf8").split(/\r?\n/).filter(Boolean).slice(-limit);
   const content = logLines.join("\n");
+  const detectLogLevel = (message) => {
+    const bracket = String(message).match(/\[(ERROR|WARN|INFO|DEBUG|TRACE)\s*\]/i);
+    if (bracket) return bracket[1].toUpperCase();
+    return /error|fail|unauthorized|auth/i.test(message) ? "ERROR" : /warn/i.test(message) ? "WARN" : "INFO";
+  };
   return {
     file: filePath,
     content,
     lines: logLines,
     entries: logLines.map((message, index) => ({
       id: `${path.basename(filePath)}:${index}`,
-      level: /error|fail|unauthorized|auth/i.test(message) ? "ERROR" : /warn/i.test(message) ? "WARN" : "INFO",
+      level: detectLogLevel(message),
       message,
       timestamp: null
     })),
@@ -750,13 +864,25 @@ function compareVersions(a, b) {
 }
 
 async function getUpdateStatus() {
+  ensureSaasDefaults();
   const currentVersion = env.appVersion;
-  if (!env.updateManifestUrl) {
-    return { status: "not-configured", available: false, currentVersion, updateInfo: null };
+  const localManifest = getTableItem("update_manifests", "id", "stable") || {};
+
+  let manifest = localManifest;
+  let source = "local";
+  if (env.updateManifestUrl) {
+    try {
+      const response = await fetch(env.updateManifestUrl, { signal: AbortSignal.timeout(8000) });
+      if (response.ok) {
+        manifest = await response.json();
+        source = "remote";
+      }
+    } catch (error) {
+      source = "local-fallback";
+      manifest = { ...localManifest, remoteError: error.message };
+    }
   }
-  const response = await fetch(env.updateManifestUrl, { signal: AbortSignal.timeout(8000) });
-  if (!response.ok) throw new Error(`Update manifest ${response.status}`);
-  const manifest = await response.json();
+
   const latestVersion = manifest.version || manifest.latestVersion || currentVersion;
   const available = compareVersions(latestVersion, currentVersion) > 0;
   return {
@@ -764,6 +890,7 @@ async function getUpdateStatus() {
     available,
     currentVersion,
     latestVersion,
+    source,
     updateInfo: manifest
   };
 }
@@ -921,14 +1048,119 @@ async function gatewayRpc(method, params = {}) {
 // ─── Routes ────────────────────────────────────────────────────────
 
 app.get("/", (req, res) => {
+  ensureSaasDefaults();
   ok(res, {
-    name: "ClawHouse Compatible Backend",
+    name: "MianClaw Compatible Backend",
     version: "0.1.0",
     time: now()
   });
 });
 
 app.get("/health", (req, res) => ok(res, { status: "ok" }));
+
+app.get("/api/admin/overview", (req, res) => {
+  ensureSaasDefaults();
+  const users = listTable("saas_users");
+  const plans = listTable("saas_plans");
+  const keys = users.filter((user) => user.apiKey);
+  const usage = listTable("usage_records");
+  const totalTokens = usage.reduce((sum, item) => sum + Number(item.totalTokens || item.tokens || 0), 0);
+  ok(res, {
+    stats: {
+      users: users.length,
+      activeUsers: users.filter((user) => user.status !== "disabled").length,
+      keys: keys.length,
+      plans: plans.length,
+      totalTokens
+    },
+    recentUsers: users.slice(-5).reverse().map(publicSaasUser),
+    manifest: getTableItem("update_manifests", "id", "stable")
+  });
+});
+
+app.get("/api/admin/users", (req, res) => {
+  ensureSaasDefaults();
+  ok(res, { users: listTable("saas_users").map(publicSaasUser) });
+});
+
+app.post("/api/admin/users", (req, res) => {
+  ensureSaasDefaults();
+  const user = normalizeSaasUser(req.body || {});
+  const saved = saveTableItem("saas_users", "id", user.id, user);
+  ok(res, { user: publicSaasUser(saved) });
+});
+
+app.put("/api/admin/users/:id", (req, res) => {
+  ensureSaasDefaults();
+  const current = getTableItem("saas_users", "id", req.params.id);
+  if (!current) return fail(res, 404, "User not found");
+  const saved = saveTableItem("saas_users", "id", req.params.id, normalizeSaasUser({ ...current, ...(req.body || {}), id: req.params.id }));
+  ok(res, { user: publicSaasUser(saved) });
+});
+
+app.delete("/api/admin/users/:id", (req, res) => ok(res, { deleted: deleteTableItem("saas_users", "id", req.params.id) }));
+
+app.post("/api/admin/users/:id/issue-key", (req, res) => {
+  ensureSaasDefaults();
+  const current = getTableItem("saas_users", "id", req.params.id);
+  if (!current) return fail(res, 404, "User not found");
+  const apiKey = issueLocalKey();
+  const saved = saveTableItem("saas_users", "id", req.params.id, {
+    ...current,
+    apiKey,
+    keyPreview: maskSecret(apiKey),
+    keyIssuedAt: now()
+  });
+  ok(res, { user: publicSaasUser(saved), apiKey });
+});
+
+app.post("/api/admin/users/:id/quota", (req, res) => {
+  ensureSaasDefaults();
+  const current = getTableItem("saas_users", "id", req.params.id);
+  if (!current) return fail(res, 404, "User not found");
+  const delta = Number(req.body?.delta || 0);
+  const quota = req.body?.quota === undefined ? Number(current.quota || 0) + delta : Number(req.body.quota);
+  const saved = saveTableItem("saas_users", "id", req.params.id, { ...current, quota: Math.max(0, quota) });
+  ok(res, { user: publicSaasUser(saved) });
+});
+
+app.get("/api/admin/plans", (req, res) => {
+  ensureSaasDefaults();
+  ok(res, { plans: listTable("saas_plans") });
+});
+
+app.post("/api/admin/plans", (req, res) => {
+  ensureSaasDefaults();
+  const plan = normalizeSaasPlan(req.body || {});
+  ok(res, { plan: saveTableItem("saas_plans", "id", plan.id, plan) });
+});
+
+app.put("/api/admin/plans/:id", (req, res) => {
+  ensureSaasDefaults();
+  const current = getTableItem("saas_plans", "id", req.params.id);
+  if (!current) return fail(res, 404, "Plan not found");
+  const plan = normalizeSaasPlan({ ...current, ...(req.body || {}), id: req.params.id });
+  ok(res, { plan: saveTableItem("saas_plans", "id", req.params.id, plan) });
+});
+
+app.delete("/api/admin/plans/:id", (req, res) => ok(res, { deleted: deleteTableItem("saas_plans", "id", req.params.id) }));
+
+app.get("/api/admin/update/manifest", (req, res) => {
+  ensureSaasDefaults();
+  ok(res, { manifest: getTableItem("update_manifests", "id", "stable") });
+});
+
+app.post("/api/admin/update/manifest", (req, res) => {
+  ensureSaasDefaults();
+  const manifest = {
+    id: "stable",
+    version: req.body?.version || "0.3.9",
+    notes: req.body?.notes || "",
+    downloadUrl: req.body?.downloadUrl || "",
+    publishedAt: req.body?.publishedAt || now()
+  };
+  ok(res, { manifest: saveTableItem("update_manifests", "id", "stable", manifest) });
+});
 
 app.get("/api/settings", (req, res) => res.json(getSettings()));
 app.put("/api/settings", (req, res) => {
@@ -1244,7 +1476,7 @@ app.post("/api/newapi/issue-key", asyncRoute(async (req, res) => {
 
   const client = newapi.withBaseUrl(req.body?.baseUrl || env.newapiBaseUrl);
   const tokenPayload = {
-    name: name || "ClawHouse Desktop",
+    name: name || "MianClaw Desktop",
     unlimited_quota: unlimitedQuota ?? env.issueKeyDefaultQuota <= 0,
     remain_quota: Number.isFinite(Number(quota)) ? Number(quota) : env.issueKeyDefaultQuota,
     expired_time: Number.isFinite(Number(expiredTime)) ? Number(expiredTime) : -1,
@@ -1309,7 +1541,7 @@ async function issueKeyForUser({ userId, sessionCookie, name, baseUrl, quota, un
   }
   const client = newapi.withBaseUrl(baseUrl || env.newapiBaseUrl);
   const tokenPayload = {
-    name: name || "ClawHouse Desktop",
+    name: name || "MianClaw Desktop",
     unlimited_quota: unlimitedQuota ?? env.issueKeyDefaultQuota <= 0,
     remain_quota: Number.isFinite(Number(quota)) ? Number(quota) : env.issueKeyDefaultQuota,
     expired_time: Number.isFinite(Number(expiredTime)) ? Number(expiredTime) : -1,
@@ -1492,6 +1724,9 @@ app.get("/api/channels", (req, res) => {
 
 app.get("/api/channels/status", (req, res) => ok(res, getChannelStatus()));
 app.get("/api/channels/accounts", (req, res) => ok(res, { accounts: [], items: [], defaultAccountId: null }));
+app.get("/api/channels/targets", (req, res) => ok(res, { targets: [], items: [] }));
+app.get("/api/channels/binding", (req, res) => ok(res, { binding: null, accounts: [], items: [] }));
+app.post("/api/channels/binding", (req, res) => ok(res, { binding: req.body || {}, saved: true }));
 app.get("/api/channels/config", (req, res) => ok(res, getChannelStatus()));
 app.get("/api/channels/config/:type", (req, res) => {
   const channel = getTableItem("channels", "channel_type", req.params.type);
@@ -1509,15 +1744,29 @@ app.post("/api/channels/config/:type", (req, res) => {
   ok(res, { channel: saved, config: saved });
 });
 app.delete("/api/channels/config/:type", (req, res) => ok(res, { deleted: deleteTableItem("channels", "channel_type", req.params.type) }));
+app.post("/api/channels/credentials/validate", (req, res) => ok(res, { valid: true, mode: "local-preview" }));
 
 app.get("/api/skills", (req, res) => ok(res, getSkillsStatus()));
 app.get("/api/skills/status", (req, res) => ok(res, getSkillsStatus()));
-app.get("/api/skills/configs", (req, res) => res.json([]));
+app.get("/api/skills/configs", (req, res) => ok(res, { configs: [], items: [] }));
 app.post("/api/skills/update", (req, res) => ok(res, { updated: true, ...getSkillsStatus() }));
 app.get("/api/clawhub/list", (req, res) => ok(res, { skills: [], items: [], marketplace: [] }));
 app.get("/api/clawhub/installed", (req, res) => ok(res, { skills: [], items: [] }));
+app.get("/api/clawhub/search", (req, res) => ok(res, { skills: [], items: [], marketplace: [], source: "https://clawhub.ai" }));
 app.post("/api/clawhub/install", (req, res) => ok(res, { installed: false, message: "Skill installation is not available in browser mode" }));
 app.post("/api/clawhub/uninstall", (req, res) => ok(res, { removed: false }));
+app.post("/api/clawhub/open-path", (req, res) => ok(res, { opened: false, path: req.body?.path || "" }));
+app.post("/api/clawhub/open-readme", (req, res) => ok(res, { opened: false, url: req.body?.url || "https://clawhub.ai" }));
+
+app.get("/api/app/openclaw-doctor", (req, res) => ok(res, {
+  checks: [
+    { id: "backend", label: "MianClaw backend", status: "ok" },
+    { id: "gateway", label: "OpenClaw Gateway", status: "ok" }
+  ],
+  summary: "local-compatible"
+}));
+app.post("/api/files/stage-buffer", (req, res) => ok(res, { staged: false, files: [], mode: "browser" }));
+app.post("/api/files/stage-paths", (req, res) => ok(res, { staged: false, files: req.body?.paths || [], mode: "browser" }));
 
 app.get("/api/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.tailLines || req.query.limit || 200))));
 app.get("/api/runtime/logs", (req, res) => ok(res, readRuntimeLogs(Number(req.query.tailLines || req.query.limit || 200))));
@@ -1644,7 +1893,7 @@ app.use((err, req, res, next) => {
 });
 
 app.listen(port, () => {
-  console.log(`ClawHouse backend listening on http://127.0.0.1:${port}`);
+  console.log(`MianClaw backend listening on http://127.0.0.1:${port}`);
   console.log(`Chat SSE endpoint: POST http://127.0.0.1:${port}/api/chat/stream`);
   console.log(`Gateway proxy: ${gatewayUrl}`);
 });

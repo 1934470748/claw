@@ -1,4 +1,4 @@
-(function () {
+﻿(function () {
   if (window.electron) return;
 
   var API_BASE = "http://127.0.0.1:3001";
@@ -86,20 +86,18 @@
   function isRegisterUrl(url) {
     var value = String(url || "");
     return value.indexOf("sign-up") >= 0 ||
-      value.indexOf("dashboard/key") >= 0 ||
-      value.indexOf("api.ovov.fun") >= 0 ||
-      value.indexOf("124.220.216.160") >= 0;
+      value.indexOf("dashboard/key") >= 0;
   }
 
   function injectBranding() {
     var logoUrl = "./assets/clawhouse-logo.png";
     var style = document.createElement("style");
-    style.id = "clawhouse-brand-style";
+    style.id = "mianclaw-brand-style";
     style.textContent = [
-      ":root{--ch-bg:#070b18;--ch-panel:#101a31;--ch-panel-2:#172441;--ch-text:#f8fbff;--ch-muted:#91a5c4;--ch-line:#243557;--ch-accent:#ff4f8b;--ch-accent-2:#ff7a1a;--ch-cyan:#31e6ff;}",
+      ":root{--ch-bg:#f4f4f5;--ch-panel:#ffffff;--ch-panel-2:#fafafa;--ch-text:#18181b;--ch-muted:#71717a;--ch-line:#e4e4e7;--ch-accent:#18181b;--ch-accent-2:#365314;--ch-cyan:#16a34a;}",
       ':root[data-claw-theme="ocean"]{--ch-bg:#061a24;--ch-panel:#0d2b3b;--ch-panel-2:#123c52;--ch-accent:#17d6c2;--ch-accent-2:#4aa7ff;--ch-cyan:#f9d26a;}',
-      ':root[data-claw-theme="light"]{--ch-bg:#f8fbff;--ch-panel:#ffffff;--ch-panel-2:#edf3ff;--ch-text:#101726;--ch-muted:#53627a;--ch-line:#d8e2f2;--ch-accent:#ff2f7d;--ch-accent-2:#ff7a1a;--ch-cyan:#2378ff;}',
-      "body,#root{background:radial-gradient(circle at 62% -10%,color-mix(in srgb,var(--ch-accent) 20%,transparent),transparent 34%),linear-gradient(180deg,var(--ch-bg),#050814 70%)!important;color:var(--ch-text)!important;}",
+      ':root[data-claw-theme="light"]{--ch-bg:#f4f4f5;--ch-panel:#ffffff;--ch-panel-2:#fafafa;--ch-text:#18181b;--ch-muted:#71717a;--ch-line:#e4e4e7;--ch-accent:#18181b;--ch-accent-2:#365314;--ch-cyan:#16a34a;}',
+      "body,#root{background:var(--ch-bg)!important;color:var(--ch-text)!important;}",
       "button,[role=button]{border-radius:10px!important;}",
       "button:not(:disabled),[role=button]:not([aria-disabled=true]){transition:background .18s ease,border-color .18s ease,transform .18s ease;}",
       "button:not(:disabled):hover,[role=button]:not([aria-disabled=true]):hover{transform:translateY(-1px);}",
@@ -114,49 +112,32 @@
     ].join("\n");
     if (!document.getElementById(style.id)) document.head.appendChild(style);
 
-    var savedTheme = localStorage.getItem("clawhouse-theme") || "aurora";
+    var savedTheme = localStorage.getItem("clawhouse-theme") || "light";
     document.documentElement.setAttribute("data-claw-theme", savedTheme);
-
-    function addToggle() {
-      if (document.getElementById("clawhouse-theme-toggle")) return;
-      if (!document.body) return;
-      var button = document.createElement("button");
-      button.id = "clawhouse-theme-toggle";
-      button.type = "button";
-      button.title = "切换颜色";
-      button.setAttribute("aria-label", "切换颜色");
-      button.addEventListener("click", function () {
-        var themes = ["aurora", "ocean", "light"];
-        var current = document.documentElement.getAttribute("data-claw-theme") || "aurora";
-        var next = themes[(themes.indexOf(current) + 1) % themes.length];
-        document.documentElement.setAttribute("data-claw-theme", next);
-        localStorage.setItem("clawhouse-theme", next);
-      });
-      document.body.appendChild(button);
-    }
+    function addToggle() {}
 
     function applyLogo() {
       if (!document.body) return;
       addToggle();
       var textNodes = Array.prototype.slice.call(document.querySelectorAll("span,div,h1,h2,strong,p"));
       textNodes.forEach(function (el) {
-        if ((el.textContent || "").trim() !== "ClawHouse") return;
+        if ((el.textContent || "").trim() !== "MianClaw" && (el.textContent || "").trim() !== "MianClaw") return;
         var parent = el.parentElement || el;
         if (parent.querySelector(".clawhouse-brand-logo")) return;
         var img = document.createElement("img");
         img.src = logoUrl;
-        img.alt = "ClawHouse";
+        img.alt = "MianClaw";
         img.className = "clawhouse-brand-logo";
         parent.insertBefore(img, parent.firstChild);
       });
 
       var welcome = Array.prototype.find.call(document.querySelectorAll("div,section,main"), function (el) {
-        return (el.textContent || "").indexOf("WELCOME TO CLAWHOUSE") >= 0;
+        return (el.textContent || "").indexOf("WELCOME TO MIANCLAW") >= 0 || (el.textContent || "").indexOf("WELCOME TO MIANCLAW") >= 0;
       });
       if (welcome && !welcome.querySelector(".clawhouse-hero-logo")) {
         var hero = document.createElement("img");
         hero.src = logoUrl;
-        hero.alt = "ClawHouse";
+        hero.alt = "MianClaw";
         hero.className = "clawhouse-hero-logo";
         welcome.insertBefore(hero, welcome.firstChild);
       }
@@ -183,7 +164,7 @@
     isDev: true,
     openExternal: function (url) {
       if (isRegisterUrl(url)) {
-        window.location.href = "http://127.0.0.1:3001/clawhouse/key.html";
+        window.location.href = "http://127.0.0.1:3001/mianclaw/key.html";
       } else {
         window.open(url, "_blank", "noopener,noreferrer");
       }
@@ -320,3 +301,6 @@
 
   injectBranding();
 })();
+
+
+

@@ -6,16 +6,19 @@
     <title>MianClaw Key</title>
     <style>
       :root {
-        color-scheme: dark;
-        --bg: #070d1a;
-        --panel: #101b31;
-        --line: rgba(255, 255, 255, 0.12);
-        --text: #eef4ff;
-        --muted: #8fa2c7;
-        --accent: #ff6b35;
-        --accent-soft: rgba(255, 107, 53, 0.16);
-        --ok: #18d49b;
-        --err: #ff5964;
+        color-scheme: light;
+        --bg: #f4f4f5;
+        --surface: #ffffff;
+        --surface-2: #fafafa;
+        --text: #18181b;
+        --muted: #71717a;
+        --line: #e4e4e7;
+        --primary: #18181b;
+        --primary-text: #ffffff;
+        --accent: #365314;
+        --ok: #16a34a;
+        --err: #dc2626;
+        --shadow: 0 24px 70px rgba(24, 24, 27, 0.08);
       }
 
       * { box-sizing: border-box; }
@@ -23,10 +26,8 @@
       body {
         margin: 0;
         min-height: 100vh;
-        font-family: Inter, "Microsoft YaHei", system-ui, sans-serif;
-        background:
-          radial-gradient(circle at 50% -12%, rgba(255, 107, 53, 0.22), transparent 38%),
-          linear-gradient(180deg, #081121 0%, var(--bg) 100%);
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+        background: var(--bg);
         color: var(--text);
       }
 
@@ -37,99 +38,140 @@
         padding: 32px 18px;
       }
 
-      .wrap { width: min(560px, 100%); }
+      .wrap {
+        width: min(640px, 100%);
+      }
+
+      .brand {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 18px;
+      }
+
+      .brand img {
+        width: 74px;
+        height: 74px;
+        border-radius: 22px;
+        object-fit: cover;
+        box-shadow: var(--shadow);
+      }
 
       .eyebrow {
+        margin: 0;
         color: var(--accent);
         font-size: 12px;
-        font-weight: 800;
-        letter-spacing: 0.14em;
+        font-weight: 900;
+        letter-spacing: 0.12em;
         text-align: center;
         text-transform: uppercase;
       }
 
       h1 {
-        margin: 10px 0 22px;
+        margin: 10px 0 12px;
         text-align: center;
-        font-size: clamp(30px, 5vw, 42px);
-        line-height: 1.12;
+        font-size: clamp(34px, 6vw, 56px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      .lead {
+        margin: 0 auto 24px;
+        max-width: 520px;
+        color: var(--muted);
+        text-align: center;
+        line-height: 1.7;
       }
 
       .card {
         border: 1px solid var(--line);
-        background: rgba(16, 27, 49, 0.9);
-        border-radius: 14px;
-        padding: 20px;
-        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.28);
+        background: var(--surface);
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: var(--shadow);
       }
 
       .tabs {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 8px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: var(--surface-2);
         margin-bottom: 18px;
       }
 
-      button, input {
+      button,
+      input {
         width: 100%;
-        border-radius: 10px;
+        border-radius: 12px;
         font: inherit;
       }
 
       button {
         border: 0;
-        min-height: 44px;
-        color: var(--text);
+        min-height: 46px;
+        color: var(--primary-text);
+        background: var(--primary);
         cursor: pointer;
-        font-weight: 800;
+        font-weight: 900;
+      }
+
+      button:hover {
+        transform: translateY(-1px);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: wait;
       }
 
       .tab {
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.05);
         color: var(--muted);
+        background: transparent;
       }
 
       .tab.active {
-        border-color: rgba(255, 107, 53, 0.55);
-        background: var(--accent-soft);
+        background: var(--surface);
         color: var(--text);
+        box-shadow: 0 10px 24px rgba(24, 24, 27, 0.06);
       }
 
-      .field { margin: 14px 0; }
+      .field {
+        margin: 14px 0;
+      }
 
       label {
         display: block;
         margin-bottom: 7px;
-        color: #c8d5ee;
+        color: var(--muted);
         font-size: 13px;
-        font-weight: 700;
+        font-weight: 800;
       }
 
       input {
         border: 1px solid var(--line);
-        background: #0a1427;
+        background: var(--surface);
         color: var(--text);
         outline: none;
-        min-height: 46px;
+        min-height: 48px;
         padding: 0 13px;
       }
 
       input:focus {
-        border-color: rgba(255, 107, 53, 0.76);
-        box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.13);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.08);
       }
 
       .primary {
         margin-top: 10px;
-        background: linear-gradient(135deg, var(--accent), #ff8a4a);
-        color: #1b0b05;
       }
 
       .secondary {
         margin-top: 10px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.05);
+        background: var(--surface-2);
+        color: var(--text);
       }
 
       .status {
@@ -152,10 +194,10 @@
 
       .keybox {
         overflow-wrap: anywhere;
-        border: 1px solid rgba(24, 212, 155, 0.35);
-        border-radius: 10px;
-        background: rgba(24, 212, 155, 0.08);
-        color: #d7fff2;
+        border: 1px solid color-mix(in srgb, var(--ok) 28%, var(--line));
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--ok) 9%, var(--surface));
+        color: #14532d;
         padding: 13px;
         font-family: "Cascadia Mono", Consolas, monospace;
         font-size: 13px;
@@ -171,9 +213,9 @@
 
       .step {
         border: 1px solid var(--line);
-        border-radius: 10px;
-        background: rgba(255, 255, 255, 0.035);
-        padding: 12px;
+        border-radius: 16px;
+        background: var(--surface);
+        padding: 14px;
       }
 
       .step b {
@@ -185,9 +227,9 @@
 
       .step span {
         display: block;
-        color: #dce6fb;
+        color: var(--text);
         font-size: 13px;
-        font-weight: 800;
+        font-weight: 900;
       }
 
       @media (max-width: 560px) {
@@ -198,53 +240,55 @@
   <body>
     <main>
       <section class="wrap">
-        <div class="eyebrow">MianClaw</div>
-        <h1>&#29983;&#25104; API Key</h1>
+        <div class="brand"><img src="./logo.png" alt="" /></div>
+        <p class="eyebrow">MianClaw</p>
+        <h1>生成 API Key</h1>
+        <p class="lead">这里先保留注册和登录发 Key 的入口，后续只接你的 NewAPI 中转站。</p>
 
         <div class="card">
           <div class="tabs" role="tablist">
-            <button class="tab active" id="registerTab" type="button">&#27880;&#20876;&#36134;&#21495;</button>
-            <button class="tab" id="loginTab" type="button">&#30331;&#24405;&#36134;&#21495;</button>
+            <button class="tab active" id="registerTab" type="button">注册账号</button>
+            <button class="tab" id="loginTab" type="button">登录账号</button>
           </div>
 
           <form id="keyForm">
             <div class="field">
-              <label for="username">&#36134;&#21495;</label>
-              <input id="username" autocomplete="username" placeholder="&#36755;&#20837;&#36134;&#21495;" required />
+              <label for="username">账号</label>
+              <input id="username" autocomplete="username" placeholder="输入账号" required />
             </div>
 
             <div class="field">
-              <label for="password">&#23494;&#30721;</label>
-              <input id="password" type="password" autocomplete="current-password" placeholder="&#36755;&#20837;&#23494;&#30721;" required />
+              <label for="password">密码</label>
+              <input id="password" type="password" autocomplete="current-password" placeholder="输入密码" required />
             </div>
 
             <div id="confirmField" class="field">
-              <label for="confirmPassword">&#30830;&#35748;&#23494;&#30721;</label>
-              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="&#20877;&#36755;&#20837;&#19968;&#27425;&#23494;&#30721;" />
+              <label for="confirmPassword">确认密码</label>
+              <input id="confirmPassword" type="password" autocomplete="new-password" placeholder="再输入一次密码" />
             </div>
 
-            <button class="primary" id="submitBtn" type="submit">&#27880;&#20876;&#24182;&#29983;&#25104; Key</button>
+            <button class="primary" id="submitBtn" type="submit">注册并生成 Key</button>
             <p class="status" id="status"></p>
           </form>
 
           <div class="result" id="result">
-            <label>&#20320;&#30340; API Key</label>
+            <label>你的 API Key</label>
             <div class="keybox" id="keyValue"></div>
-            <button class="secondary" id="copyBtn" type="button">&#22797;&#21046; Key</button>
-            <button class="primary" id="backBtn" type="button">&#22797;&#21046;&#24182;&#36820;&#22238;&#23458;&#25143;&#31471;</button>
+            <button class="secondary" id="copyBtn" type="button">复制 Key</button>
+            <button class="primary" id="backBtn" type="button">复制并返回客户端</button>
           </div>
         </div>
 
         <div class="steps">
-          <div class="step"><b>01</b><span>&#27880;&#20876;&#25110;&#30331;&#24405;</span></div>
-          <div class="step"><b>02</b><span>&#29983;&#25104; Key</span></div>
-          <div class="step"><b>03</b><span>&#36820;&#22238;&#32465;&#23450;</span></div>
+          <div class="step"><b>01</b><span>注册或登录</span></div>
+          <div class="step"><b>02</b><span>生成 Key</span></div>
+          <div class="step"><b>03</b><span>返回绑定</span></div>
         </div>
       </section>
     </main>
 
     <script>
-      const clientUrl = "http://localhost:4173/app/dist/?v=7#/console";
+      const clientUrl = "http://localhost:4173/app/dist/?v=10#/console";
       let mode = "register";
       let issuedKey = "";
 
@@ -259,16 +303,12 @@
       const copyBtn = document.querySelector("#copyBtn");
       const backBtn = document.querySelector("#backBtn");
 
-      function text(value) {
-        return value;
-      }
-
       function setMode(nextMode) {
         mode = nextMode;
         registerTab.classList.toggle("active", mode === "register");
         loginTab.classList.toggle("active", mode === "login");
         confirmField.style.display = mode === "register" ? "block" : "none";
-        submitBtn.textContent = mode === "register" ? text("\u6ce8\u518c\u5e76\u751f\u6210 Key") : text("\u767b\u5f55\u5e76\u751f\u6210 Key");
+        submitBtn.textContent = mode === "register" ? "注册并生成 Key" : "登录并生成 Key";
         statusEl.textContent = "";
         statusEl.className = "status";
       }
@@ -282,7 +322,7 @@
         if (!issuedKey) return;
         try {
           await navigator.clipboard.writeText(issuedKey);
-        } catch (error) {
+        } catch {
           const textarea = document.createElement("textarea");
           textarea.value = issuedKey;
           textarea.setAttribute("readonly", "");
@@ -293,7 +333,7 @@
           document.execCommand("copy");
           document.body.removeChild(textarea);
         }
-        setStatus(text("Key \u5df2\u590d\u5236"), "ok");
+        setStatus("Key 已复制", "ok");
       }
 
       async function requestKey(event) {
@@ -302,17 +342,11 @@
         const password = document.querySelector("#password").value;
         const confirmPassword = document.querySelector("#confirmPassword").value;
 
-        if (!username || !password) {
-          setStatus(text("\u8bf7\u586b\u5199\u8d26\u53f7\u548c\u5bc6\u7801"), "error");
-          return;
-        }
-        if (mode === "register" && password !== confirmPassword) {
-          setStatus(text("\u4e24\u6b21\u8f93\u5165\u7684\u5bc6\u7801\u4e0d\u4e00\u81f4"), "error");
-          return;
-        }
+        if (!username || !password) return setStatus("请填写账号和密码", "error");
+        if (mode === "register" && password !== confirmPassword) return setStatus("两次输入的密码不一致", "error");
 
         submitBtn.disabled = true;
-        setStatus(mode === "register" ? text("\u6b63\u5728\u6ce8\u518c\u5e76\u751f\u6210 Key...") : text("\u6b63\u5728\u767b\u5f55\u5e76\u751f\u6210 Key..."));
+        setStatus(mode === "register" ? "正在注册并生成 Key..." : "正在登录并生成 Key...");
 
         try {
           const endpoint = mode === "register" ? "/api/clawhouse/register-and-issue-key" : "/api/clawhouse/login-and-issue-key";
@@ -323,15 +357,15 @@
           });
           const data = await response.json().catch(() => ({}));
           if (!response.ok || !data.success || !data.key) {
-            throw new Error(data.error || data.message || "\u751f\u6210 Key \u5931\u8d25");
+            throw new Error(data.error || data.message || "生成 Key 失败");
           }
 
           issuedKey = data.key;
           keyValueEl.textContent = issuedKey;
           resultEl.style.display = "block";
-          setStatus(text("Key \u5df2\u751f\u6210"), "ok");
+          setStatus("Key 已生成", "ok");
         } catch (error) {
-          setStatus(error.message || text("\u8bf7\u7a0d\u540e\u91cd\u8bd5"), "error");
+          setStatus(error.message || "请稍后重试", "error");
         } finally {
           submitBtn.disabled = false;
         }
@@ -342,11 +376,7 @@
       form.addEventListener("submit", requestKey);
       copyBtn.addEventListener("click", copyKey);
       backBtn.addEventListener("click", async () => {
-        try {
-          await copyKey();
-        } finally {
-          window.location.assign(clientUrl);
-        }
+        try { await copyKey(); } finally { window.location.assign(clientUrl); }
       });
       setMode("register");
     </script>

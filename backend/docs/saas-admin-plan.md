@@ -1,61 +1,61 @@
-# ClawHouse SaaS Admin Plan
+# MianClaw SaaS Admin Plan
 
-## Goal
+## 目标
 
-ClawHouse is an OpenClaw shell with a hosted NewAPI account/key workflow. The desktop/web shell should keep working with user-owned vendor keys, while the SaaS backend manages registration, issued keys, balance, usage, plans, and update delivery.
+MianClaw 是 OpenClaw 的产品壳。正式上线后，用户注册、Key 签发、余额、用量、套餐和客户端更新都由我们的 SaaS 后台管理；桌面端只拿到可用 Key 并写入本地配置。
 
-## Recommended Starter
+## 今天先做什么
 
-Use `nextjs/saas-starter` as the first SaaS admin base:
+- 先稳定客户端壳子、插件、日志、定时任务和本地后台页面。
+- NewAPI 中转站未确定前，不继续扩展 Key 调用逻辑。
+- 保留本地 SQLite 兼容接口，方便前端页面不报错。
+
+## 推荐 SaaS 底座
+
+先用 `nextjs/saas-starter` 承接正式后台：
 
 - GitHub: https://github.com/nextjs/saas-starter
-- Stack: Next.js, Postgres, Drizzle, Stripe, shadcn/ui
-- Useful built-ins: auth, team/user dashboard, RBAC, Stripe Checkout, customer portal, activity logs
+- 技术栈：Next.js、Postgres、Drizzle、Stripe、shadcn/ui
+- 自带能力：登录、团队、RBAC、Stripe Checkout、客户门户、活动日志
 
-Why it fits this project:
+它适合本项目，因为认证、计费和后台基础能力已经齐全，我们主要补 MianClaw 与 NewAPI 的业务模块。
 
-- It is close to the current stack style and easy to deploy on Vercel or a Node server.
-- It already has auth, billing, dashboard pages, and activity logs, so we can focus on NewAPI integration instead of rebuilding SaaS basics.
-- Its dashboard model maps cleanly to ClawHouse accounts, API keys, usage records, subscription plans, and admin operations.
+## 后续模块
 
-## ClawHouse Modules To Add
+1. 用户与 NewAPI 绑定
+   - SaaS 用户注册/登录。
+   - 绑定 NewAPI 用户 id、访问令牌和签发 Key。
+   - 只允许使用我们的 NewAPI 中转站 Key。
 
-1. Account binding
-   - Register/login users in the SaaS backend.
-   - Bind a NewAPI user id and issued token to each SaaS user.
-   - Allow direct vendor keys for DeepSeek, Zhipu, Qwen, SiliconFlow, Moonshot, OpenAI-compatible providers.
+2. Key 管理
+   - 管理员接口创建、查询、禁用、轮换 Key。
+   - 后台展示脱敏 Key 和完整状态。
+   - 桌面端负责写入本地 `openclaw.json`。
 
-2. Key management
-   - Create and rotate ClawHouse dedicated keys through NewAPI admin APIs.
-   - Store only masked keys in the SaaS UI whenever possible.
-   - Keep the local desktop backend responsible for writing `openclaw.json`.
+3. 用量与余额
+   - 同步 NewAPI 日志、额度、余额、模型分布和错误记录。
+   - 给用户侧显示余额、用量、请求消耗。
 
-3. Usage and balance
-   - Sync NewAPI logs and quota data into SaaS tables.
-   - Show request count, token count, quota cost, model distribution, and recent errors.
-   - Keep local usage fallback for official vendor keys that do not pass through NewAPI.
+4. 套餐与支付
+   - Stripe 产品映射到额度包或月付套餐。
+   - 支付成功后更新 NewAPI 额度或发放权益。
 
-4. Plans and payment
-   - Stripe products map to quota packages or monthly plans.
-   - Payment success should trigger NewAPI quota update or token issuance.
+5. 客户端更新
+   - 服务器托管更新 manifest。
+   - 客户端调用 `/api/update/status` 和 `/api/update/check`。
 
-5. Updates
-   - Host a manifest JSON at `UPDATE_MANIFEST_URL`.
-   - Desktop/web backend checks `/api/update/status` and `/api/update/check`.
-   - Manifest shape:
+## 更新 Manifest
 
 ```json
 {
   "version": "0.4.0",
   "notes": "Bug fixes and provider updates",
-  "downloadUrl": "https://example.com/releases/clawhouse-0.4.0.exe",
-  "publishedAt": "2026-05-21T00:00:00.000Z"
+  "downloadUrl": "https://example.com/releases/mianclaw-0.4.0.exe",
+  "publishedAt": "2026-05-22T00:00:00.000Z"
 }
 ```
 
-## Next Implementation Slice
-
-Start with the SaaS admin as a separate app, then connect it to this backend by API:
+## 第一版后台 API 草案
 
 - `GET /admin/users`
 - `GET /admin/users/:id/usage`
@@ -63,5 +63,3 @@ Start with the SaaS admin as a separate app, then connect it to this backend by 
 - `POST /admin/users/:id/quota`
 - `GET /admin/update/manifest`
 - `POST /admin/update/manifest`
-
-This keeps the current ClawHouse shell stable while the SaaS platform grows beside it.
